@@ -1,0 +1,113 @@
+# =============================================================================
+# FCT Proposal Engine — Draft Research Idea Template
+# Fill in this file and run: fct-engine pipeline --input drafts/my_idea.yaml
+# =============================================================================
+
+# --- Core Idea ---
+title: "Digital Transformation and Organizational Resilience: AI-Driven Frameworks for SME Sustainability"
+title_pt: "Transformação Digital e Resiliência Organizacional: Modelos Baseados em IA para a Sustentabilidade das PMEs"
+acronym: "DigiResilient"
+typology: "SR&TD"  # SR&TD or PEX
+
+# --- Research Framing ---
+research_topic: |
+  This project investigates how small and medium enterprises (SMEs) can leverage 
+  artificial intelligence and digital transformation strategies to build organizational 
+  resilience in the face of economic uncertainty, supply chain disruptions, and 
+  sustainability pressures. Despite growing literature on digital transformation in 
+  large corporations, there is a significant gap in understanding how resource-constrained 
+  SMEs adopt and benefit from AI-driven tools, and how these tools contribute to both 
+  operational resilience and sustainability performance. The project proposes a mixed-methods 
+  approach combining longitudinal survey data with qualitative case studies across Portuguese 
+  and European SMEs, developing a novel AI-augmented resilience assessment framework.
+
+research_questions:
+  - "RQ1: How do AI adoption patterns in SMEs relate to organizational resilience outcomes?"
+  - "RQ2: What institutional and resource-based factors moderate the relationship between digital transformation and SME sustainability?"
+  - "RQ3: Can an AI-driven diagnostic tool reliably predict resilience vulnerabilities in SMEs?"
+
+keywords_en:
+  - "digital transformation"
+  - "organizational resilience"
+  - "artificial intelligence"
+  - "SME sustainability"
+
+keywords_pt:
+  - "transformação digital"
+  - "resiliência organizacional"
+  - "inteligência artificial"
+  - "sustentabilidade PME"
+
+scientific_domain: "Social Sciences"
+scientific_area: "Economics and Business"
+scientific_subarea: "Business and Management"
+
+# --- Team ---
+pi:
+  name: "Prof. João Silva"
+  email: "joao.silva@ua.pt"
+  institution: "Universidade de Aveiro"
+  role: "pi"
+  expertise: "Strategic management, digital transformation, organizational theory"
+  orcid: "0000-0001-XXXX-XXXX"
+
+team_members:
+  - name: "Dr. Ana Costa"
+    email: "ana.costa@ua.pt"
+    institution: "Universidade de Aveiro"
+    role: "team_member"
+    expertise: "Quantitative methods, survey research, SEM"
+  - name: "Dr. Marco Bianchi"
+    email: "m.bianchi@polimi.it"
+    institution: "Politecnico di Milano"
+    role: "team_member"
+    expertise: "AI applications in management, machine learning"
+
+hirings_planned:
+  - name: "PhD Researcher (to hire)"
+    institution: "Universidade de Aveiro"
+    role: "to_hire"
+    expertise: "Data science, NLP, qualitative analysis"
+
+# --- Institutions ---
+principal_contractor: "Universidade de Aveiro"
+research_units:
+  - "GOVCOPP"
+participating_institutions: []
+collaborative_institutions:
+  - "Politecnico di Milano"
+
+# --- PI Context ---
+pi_career_summary: |
+  Associate Professor at UA since 2015. Published 45+ peer-reviewed articles in 
+  JCR-indexed journals (h-index: 18). PI of 3 completed FCT projects. Supervised 
+  8 PhD students to completion. Research focus on strategic management and digital 
+  transformation. Member of the editorial board of 2 international journals.
+
+related_publications:
+  - "Silva, J. et al. (2024). Digital transformation and SME performance. IJPE, 287, 109123."
+  - "Silva, J. & Costa, A. (2023). Resilience frameworks for emerging economies. JBR, 156, 113-127."
+
+methodology_notes: |
+  Phase 1: Systematic literature review and framework development.
+  Phase 2: Large-scale survey (n=500+) of Portuguese SMEs using validated scales.
+  Phase 3: Multiple case studies (8-10 SMEs) with longitudinal tracking.
+  Phase 4: Development and validation of AI diagnostic tool (prototype).
+  Analysis: PLS-SEM for quantitative data; thematic analysis for qualitative; ML models for tool.
+
+budget_notes: |
+  Main costs: 1 PhD researcher contract (24 months), travel for case studies and 
+  conferences, survey platform and data collection, AI tool development (cloud computing).
+
+ethical_considerations: |
+  Survey data collection requires informed consent. Company data will be anonymized. 
+  GDPR compliance for all data processing. Ethics committee approval to be sought in Month 1.
+
+sdg_alignment:
+  - 8   # Decent Work and Economic Growth
+  - 9   # Industry, Innovation and Infrastructure
+  - 12  # Responsible Consumption and Production
+
+target_start_date: "2027-01-01"
+duration_months: 36
+estimated_budget: 200000

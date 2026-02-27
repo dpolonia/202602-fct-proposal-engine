@@ -1,0 +1,63 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DraftIdea",
+  "description": "Input schema for an FCT PTDC 2025 research idea",
+  "type": "object",
+  "required": ["title", "research_topic"],
+  "properties": {
+    "title": {
+      "type": "string",
+      "maxLength": 255,
+      "description": "Project title in English"
+    },
+    "title_pt": {
+      "type": "string",
+      "maxLength": 255,
+      "description": "Project title in Portuguese"
+    },
+    "acronym": {
+      "type": "string",
+      "maxLength": 15
+    },
+    "typology": {
+      "type": "string",
+      "enum": ["SR&TD", "PEX"],
+      "default": "SR&TD"
+    },
+    "research_topic": {
+      "type": "string",
+      "minLength": 50,
+      "description": "1-3 paragraph description of the research idea"
+    },
+    "research_questions": {
+      "type": "array",
+      "items": { "type": "string" },
+      "maxItems": 10
+    },
+    "keywords_en": {
+      "type": "array",
+      "items": { "type": "string" },
+      "maxItems": 4
+    },
+    "keywords_pt": {
+      "type": "array",
+      "items": { "type": "string" },
+      "maxItems": 4
+    },
+    "sdg_alignment": {
+      "type": "array",
+      "items": { "type": "integer", "minimum": 1, "maximum": 17 },
+      "maxItems": 3
+    },
+    "duration_months": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 36
+    },
+    "estimated_budget": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 250000
+    }
+  }
+}

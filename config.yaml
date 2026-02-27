@@ -1,0 +1,202 @@
+# =============================================================================
+# FCT Proposal Engine — User Configuration
+# =============================================================================
+# This is the MAIN configuration file. Edit it to control:
+#   - Which AI models generate and review your proposal
+#   - Project typology (IC&DT or PEX)
+#   - Review panel composition
+#   - Output formats and paths
+#   - Scopus search behaviour
+#
+# API keys go in .env (never committed to git).
+# =============================================================================
+
+
+# -----------------------------------------------------------------------------
+# 1. PROJECT DEFAULTS
+# -----------------------------------------------------------------------------
+# These are applied when the draft idea does not specify its own values.
+
+project:
+  typology: "SR&TD"               # "SR&TD" (IC&DT, up to €250k / 36 mo)
+                                   # "PEX"   (Exploratory, up to €60k / 18 mo)
+  principal_contractor: "Universidade de Aveiro"
+  default_research_units:
+    - "GOVCOPP"                    # Change to your research unit(s)
+  language: "en"                   # Proposal language (always "en" per FCT rules)
+  target_start_date: "2027-01-01"
+
+
+# -----------------------------------------------------------------------------
+# 2. AI PROVIDERS & MODELS
+# -----------------------------------------------------------------------------
+# Choose which LLM drives each part of the pipeline.
+# Supported providers: anthropic, openai, google, huggingface
+#
+# You only need keys for the providers you actually enable.
+
+llm:
+  # --- Generator (writes proposal sections) ---
+  generator:
+    provider: "anthropic"
+    model: "claude-opus-4-6"
+    # claude-sonnet-4-6
+    # claude-haiku-4-5-20251001
+    temperature: 0.3
+    # Alternatives:
+    # gpt-5.2-2025-12-11
+    # gpt-5.2-pro-2025-12-11
+    # gpt-5-mini-2025-08-07
+    # gemini-3.1-pro-preview
+    # gemini-2.5-flash
+    # gemini-3-flash-preview
+
+
+  # --- Consensus synthesiser (aggregates peer reviews) ---
+  consensus:
+    provider: "anthropic"
+    model: "claude-opus-4-6"
+    # claude-sonnet-4-6
+    # claude-haiku-4-5-20251001
+    temperature: 0.3
+
+  # --- Revision engine (applies review feedback) ---
+  revision:
+    provider: "anthropic"
+    model: "claude-opus-4-6"
+    # claude-sonnet-4-6
+    # claude-haiku-4-5-20251001
+    temperature: 0.3
+
+
+# -----------------------------------------------------------------------------
+# 3. REVIEW PANEL
+# -----------------------------------------------------------------------------
+# Each entry defines one AI reviewer with a specific perspective.
+# Disable a reviewer by setting  enabled: false  or removing its block.
+# You can add custom reviewers by appending entries to this list.
+
+review_panel:
+  - id: "claude_rigor"
+    enabled: true
+    provider: "anthropic"
+    model: "claude-opus-4-6"
+    # claude-sonnet-4-6
+    # claude-haiku-4-5-20251001
+    perspective: "scientific_rigor"
+    focus_criteria: ["A1", "B1"]
+    persona: >
+    Professor Maria Santos is a senior methodologist and programme evaluator with long experience in European national
+    funding panels and a publication record in research design, evaluation theory, and mixed-methods. She reviews like a
+    sceptical examiner: every strong claim must map to a testable hypothesis, a defensible identification strategy, valid
+    measurement, and bias control. She expects a clear logic model (inputs→activities→outputs→outcomes→impact), explicit
+    unit of analysis, justified sampling/coverage, and a threats-to-validity table. She penalises method shopping,
+    feasibility theatre, and non-falsifiable objectives; she rewards reproducibility plans (data/code), transparent
+    uncertainty, and concrete risk mitigation with triggers and owners.
+
+
+  - id: "openai_innovation"
+    enabled: true
+    provider: "openai"
+    model: "gpt-5.2-2025-12-11"
+    # gpt-5.2-pro-2025-12-11
+    # gpt-5-mini-2025-08-07
+    perspective: "innovation"
+    focus_criteria: ["A2", "A1"]
+    persona: >
+      Dr. James Chen is an innovation scholar trained across technology strategy and science policy, experienced in NSF/ERC-
+      style evaluation, and he is a “novelty prosecutor”: he assumes incrementalism unless the proposal proves otherwise
+      with 3–5 explicit novelty claims, each positioned against the closest prior art and stating the new mechanism/insight.
+      He demands a crisp “why now” argument, boundary conditions, and disconfirmation tests. He also audits impact logic:
+      claims of societal or policy value must be tied to a plausible pathway to adoption (actors, incentives, decision points),
+      with evidence of stakeholder pull rather than generic dissemination plans.
+
+
+  - id: "gemini_feasibility"
+    enabled: true
+    provider: "google"
+    model: "gemini-3.1-pro-preview"
+    # gemini-2.5-flash
+    # gemini-3-flash-preview
+    perspective: "feasibility"
+    focus_criteria: ["C", "B2"]
+    persona: >
+      Dr. Anna Müller is a project management and evaluation specialist who has chaired multidisciplinary panels and run
+      complex R&D programmes. She reads proposals as executable systems: objectives must map to tasks, deliverables,
+      milestones, roles, and resources with internal consistency and a credible critical path. She expects definitions of done,
+      verification methods, dependency management, governance (decision rights/escalation/QA), and a budget narrative tied to
+      cost drivers. She additionally stress-tests compliance and approvals realism: GDPR/ethics timelines, DPIA needs,
+      data-sharing agreements, procurement lead times, and contingency plans if access to critical data or partners slips.
+
+  - id: "llama_domain"
+    enabled: true
+    provider: "huggingface"
+    model: "meta-llama/Llama-3.1-70B-Instruct"
+    # Qwen/Qwen2.5-72B-Instruct
+    # deepseek-ai/DeepSeek-R1-0528
+    perspective: "domain_expert"
+    focus_criteria: ["A1", "A2", "C"]
+    persona: >
+      The domain expert reviewer is calibrated to the proposal’s scientific area and behaves like a careful insider. They test
+      whether the proposal respects domain realities—data-generating processes, institutional constraints, coding standards,
+      workflow integration, and adoption incentives. They scrutinise method–domain fit, key assumptions, and likely
+      confounders/failure modes (e.g., selection bias, case-mix adjustment, missingness, coding drift, policy endogeneity),
+      and they check alignment with relevant standards, datasets, and stakeholder incentives. They also perform an ethics and
+      governance sanity check from within the domain: lawful basis, minimisation, re-identification risk, and whether outputs
+      are usable in practice (integration points, maintenance, sustainability beyond the grant).
+
+# -----------------------------------------------------------------------------
+# 4. PIPELINE
+# -----------------------------------------------------------------------------
+
+pipeline:
+  iterations: 3                    # Generate → Review → Revise cycles
+  stop_on_accept: true             # Stop early if panel decision is "accept"
+  max_concurrent_reviews: 4        # Parallel reviewer calls
+  save_intermediates: true         # Keep v0, v1, … files in output dir
+
+
+# -----------------------------------------------------------------------------
+# 5. LITERATURE SEARCH (Scopus)
+# -----------------------------------------------------------------------------
+
+scopus:
+  enabled: true                    # Set false to skip literature search
+  max_results: 100                  # Total articles to retrieve
+  year_from: 2019                  # Oldest publication year
+  enrich_abstracts: true           # Fetch full abstracts for top articles
+  top_abstracts: 30                # How many top-cited articles to enrich
+
+
+# -----------------------------------------------------------------------------
+# 6. OUTPUT
+# -----------------------------------------------------------------------------
+
+output:
+  dir: "output"                    # Base output directory
+  formats:                         # Which output files to produce
+    json: true                     # Machine-readable proposal
+    markdown: true                 # Human-readable summary
+    docx: false                    # Word document (requires python-docx)
+    char_report: true              # Character-count compliance report
+  include_review_narrative: true   # Include panel narrative in final output
+
+
+# -----------------------------------------------------------------------------
+# 7. LOGGING
+# -----------------------------------------------------------------------------
+
+logging:
+  level: "INFO"                    # DEBUG, INFO, WARNING, ERROR
+  rich_console: true               # Coloured terminal output via Rich
+
+
+# -----------------------------------------------------------------------------
+# 8. GCP DEPLOYMENT (only needed for cloud hosting)
+# -----------------------------------------------------------------------------
+
+gcp:
+  project_id: "fct-proposal-engine"
+  region: "europe-west1"
+  bucket: "fct-proposals-store"
+  cloud_run_service: "fct-engine-api"

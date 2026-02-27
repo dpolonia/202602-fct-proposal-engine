@@ -1,0 +1,84 @@
+{
+  "call": "FCT PTDC 2025 — R&D Projects in All Scientific Domains",
+  "evaluation_criteria": {
+    "A": {
+      "name": "Scientific merit and innovative nature",
+      "weight": 0.40,
+      "sub_criteria": {
+        "A1": {
+          "name": "Scientific merit of the project",
+          "weight_within_A": 0.50,
+          "dimensions": [
+            "Relevance and clear identification of objectives and challenges based on state-of-the-art",
+            "Quality and adequacy of the proposed methodology",
+            "Potential contribution to advance knowledge in the field"
+          ]
+        },
+        "A2": {
+          "name": "Innovative nature of the proposal",
+          "weight_within_A": 0.50,
+          "dimensions": [
+            "Originality and ambition of the proposal",
+            "Potential for disruptive or transformative results",
+            "Positioning relative to international research frontiers"
+          ]
+        }
+      },
+      "note": "Criterion A assesses WHAT is proposed (merit, ambition, originality)"
+    },
+    "B": {
+      "name": "Scientific merit of the PI and the research team",
+      "weight": 0.30,
+      "sub_criteria": {
+        "B1": {
+          "name": "Scientific merit of the PI",
+          "weight_within_B": 0.60,
+          "dimensions_ICDT": [
+            "Track record of scientific productivity and quality",
+            "Leadership and supervision experience",
+            "Research independence and international recognition"
+          ],
+          "dimensions_PEX": [
+            "Track record relative to career stage",
+            "Impact of project on PI career development",
+            "Potential for research independence"
+          ]
+        },
+        "B2": {
+          "name": "Research team",
+          "weight_within_B": 0.40,
+          "dimensions": [
+            "Complementarity of skills and balance of roles",
+            "Adequacy of team size and composition for the work plan",
+            "Track record of collaboration and internationalization",
+            "Capacity to engage and develop early-career researchers"
+          ]
+        }
+      }
+    },
+    "C": {
+      "name": "Feasibility of the workplan and budget adequacy",
+      "weight": 0.30,
+      "dimensions": [
+        "Coherence and realism of the workplan and timeline",
+        "Clarity and tangibility of deliverables linked to each task",
+        "Budget adequacy, proportionality, and justification at task level",
+        "Quality of the management structure and risk management",
+        "Ethics compliance and timeline for approvals (when applicable)",
+        "Alignment between ambitious objectives (Criterion A) and available resources"
+      ],
+      "note": "Criterion C assesses HOW feasible the proposal is (planning, resources, implementation)"
+    }
+  },
+  "scoring": {
+    "scale": "1-10",
+    "min_merit_threshold": 7.0,
+    "funding_decision": "Ranked by overall score; funded until budget exhausted"
+  },
+  "lump_sum_rules": {
+    "payment_basis": "Task completion evidenced by deliverables",
+    "intermediate_payments": "Only for tasks with 100% completion rate",
+    "indirect_costs": "25% of eligible direct costs (automatic)",
+    "building_adaptation": "Max 10% of total eligible costs"
+  }
+}
