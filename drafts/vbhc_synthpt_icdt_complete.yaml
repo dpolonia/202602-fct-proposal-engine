@@ -1,0 +1,203 @@
+# =============================================================================
+# FCT Proposal Engine — Draft Research Idea: VBHC-SynthPT
+# Value-Based Healthcare Modelling Through Synthetic Population Data
+# Derived from: PDSPP Detailed Description + Roadmap (Feb 2026)
+# Typology: SR&TD (IC&DT) — up to €250,000 / 36 months
+# =============================================================================
+
+# --- Core Idea ---
+title: "Value-Based Healthcare Modelling in Beveridgean Systems Through Calibrated Synthetic Population Data"
+title_pt: "Modelação de Cuidados de Saúde Baseados em Valor em Sistemas Beveridgeanos Através de Dados de População Sintética Calibrados"
+acronym: "VBHC-SynthPT"
+typology: "SR&TD"
+
+# --- Research Framing ---
+research_topic: |
+  The transition from volume-based to value-based healthcare (VBHC) — paying for
+  outcomes that matter to patients rather than for services delivered — is widely
+  recognised as essential for the financial sustainability of universal health
+  systems (Porter & Teisberg, 2006). Yet the implementation of VBHC in
+  Beveridgean-type national health services, including the Portuguese NHS, has been
+  hampered by a fundamental data paradox: the cost–outcome metrics required to
+  define care cycles, measure value, and benchmark providers depend on
+  patient-level longitudinal data that are either inaccessible, fragmented across
+  information silos, or subject to years-long access authorisation processes under
+  GDPR and national data-protection legislation.
+
+  This project proposes a novel methodological approach: using calibrated synthetic
+  population data — algorithmically generated datasets that faithfully reproduce
+  the statistical properties of real populations without containing personally
+  identifiable information (Walonoski et al., 2018; El Emam et al., 2020) — to
+  model VBHC care cycles, cost structures, and outcome metrics for the Portuguese
+  NHS. Building on the Synthea Patient Generator adapted to Portuguese demographics
+  and epidemiology, the project will develop, validate, and pilot-test a VBHC
+  simulation framework for three tracer conditions (diabetes mellitus type 2,
+  chronic obstructive pulmonary disease, and hip/knee replacement), generating
+  synthetic cost and outcome trajectories that enable value measurement,
+  provider benchmarking, and prospective resource-allocation modelling.
+
+  The project is strategically positioned at the convergence of three policy
+  imperatives: the European Health Data Space (EHDS; Regulation (EU) 2025/327),
+  which mandates infrastructure for secondary use of health data; the Portuguese
+  NHS reform agenda, which increasingly emphasises outcome-based accountability
+  in the Local Health Units (ULS); and the 2030 Agenda, which calls for
+  efficient, equitable, and evidence-informed health systems (SDG 3.8).
+
+research_questions:
+  - "RQ1: To what extent can synthetic population data, calibrated to Portuguese NHS parameters, generate VBHC care-cycle cost and outcome profiles that are analytically equivalent to real-world evidence (utility preservation ratio > 0.85)?"
+  - "RQ2: What is the minimum set of calibration parameters required for a synthetic VBHC model to produce reliable provider-level benchmarking, and how sensitive are value metrics to parameter uncertainty?"
+  - "RQ3: How can synthetic VBHC models inform prospective resource-allocation decisions in the Portuguese NHS ULS structure, and what governance arrangements are needed to embed these tools in planning cycles?"
+  - "RQ4: What adaptations to the Porter–Teisberg VBHC framework are necessary for Beveridgean health systems where provider competition is limited and funding is predominantly public?"
+
+keywords_en:
+  - "Value-Based Healthcare"
+  - "synthetic data"
+  - "health system modelling"
+  - "Beveridgean health systems"
+
+keywords_pt:
+  - "cuidados de saúde baseados em valor"
+  - "dados sintéticos"
+  - "modelação de sistemas de saúde"
+  - "sistemas de saúde Beveridgeanos"
+
+scientific_domain: "Social Sciences"
+scientific_area: "Economics and Business"
+scientific_subarea: "Business and Management"
+
+# --- Team ---
+pi:
+  name: "Daniel Ferreira Polónia"
+  email: "dpolonia@ua.pt"  # UPDATE
+  institution: "Universidade de Aveiro"
+  role: "pi"
+  expertise: >
+    Value-Based Healthcare implementation, health system governance, digital
+    transformation in health, synthetic population modelling, management of
+    Beveridgean health systems. 25+ years integrating management, technology,
+    and society. Developer of UOG Dashboard (https://portaria-ob-gyn.web.app/).
+  orcid: "0000-0000-0000-0000"  # UPDATE
+
+team_members:
+  - name: "Health Economist"  # TO DESIGNATE
+    email: "tbd@ensp.unl.pt"
+    institution: "ENSP — Escola Nacional de Saúde Pública"
+    role: "team_member"
+    expertise: "Health economics, cost-effectiveness analysis, GDH/DRG costing, NHS financing"
+  - name: "Clinical Expert / Internist"  # TO DESIGNATE
+    email: "tbd@uls.pt"
+    institution: "ULS piloto"
+    role: "team_member"
+    expertise: "Internal medicine, clinical pathways, diabetes/COPD management, outcome measurement"
+  - name: "Management Scientist"  # TO DESIGNATE
+    email: "tbd@ua.pt"
+    institution: "Universidade de Aveiro"
+    role: "team_member"
+    expertise: "Operations management in health, simulation modelling, decision support"
+
+hirings_planned:
+  - name: "Research Fellow — Health Data Science"
+    institution: "Universidade de Aveiro"
+    role: "to_hire"
+    expertise: "Health economics data, synthetic data generation, Python, OMOP CDM, care-cycle modelling"
+  - name: "Research Assistant — Clinical Validation"
+    institution: "Universidade de Aveiro"
+    role: "to_hire"
+    expertise: "Clinical data analysis, GDH/ICD coding, outcome measurement, literature synthesis"
+
+# --- Institutions ---
+principal_contractor: "Universidade de Aveiro"
+research_units:
+  - "GOVCOPP"
+participating_institutions: []
+collaborative_institutions:
+  - "ENSP — Escola Nacional de Saúde Pública, UNL"
+  - "ULS piloto (to formalise)"
+
+# --- PI Context ---
+pi_career_summary: |
+  Integrated Researcher at GOVCOPP, Universidade de Aveiro. PhD in Electrical
+  Engineering (UA, 2011). Lecturer at ISCA-UA and DEGEIT. Over 25 years of
+  research and professional experience bridging management, technology, and
+  society, with a consolidated research programme in digital health
+  transformation, health data governance, and the design of synthetic population
+  systems for Beveridgean NHS planning.
+
+  Research specifically addresses the implementation of Value-Based Healthcare
+  in publicly funded universal health systems, where the data infrastructure
+  needed for outcome measurement and value-based contracting is typically
+  underdeveloped. The PI's work on the Synthea-PT adaptation and the
+  UOG Dashboard prototype (https://portaria-ob-gyn.web.app/) demonstrates
+  hands-on capability in translating public health data into decision-support
+  tools for NHS planning.
+
+  [UPDATE: Insert h-index, total publications, supervised students, prior
+  funded projects, and key VBHC/health management publications from CIÊNCIAVITAE]
+
+related_publications:
+  - "[UPDATE: Insert publications on VBHC, health systems, digital health from CIÊNCIAVITAE]"
+
+related_projects:
+  - "UOG Dashboard — NHS emergency network planning prototype (ongoing)"
+  - "[UPDATE: List prior funded projects related to health management/VBHC]"
+
+methodology_notes: |
+  Phase 1 — VBHC Framework Adaptation (M1–M10): Systematic literature review
+  on VBHC implementation in Beveridgean systems. Adaptation of the Porter–Teisberg
+  framework to Portuguese NHS institutional structures (ULS, ACES, SNS financing).
+  Definition of care cycles, outcome metrics, and cost categories for 3 tracer
+  conditions: DM2, COPD, hip/knee replacement. Expert panel validation (Delphi, 2
+  rounds).
+
+  Phase 2 — Synthetic Data Generation & Costing (M8–M22): Parameterisation of
+  Synthea-PT modules for the 3 tracer conditions using DGS prevalence data, INSA
+  health surveys, and ACSS GDH tables. Integration of cost modules using published
+  GDH prices and NHS unit costs. Generation of synthetic cohorts (n=50,000 per
+  condition) with full clinical trajectories and cost profiles.
+
+  Phase 3 — Validation & Benchmarking (M18–M30): Tri-partite validation of
+  synthetic cost–outcome data (fidelity, utility, privacy). Benchmarking exercise
+  with 3–5 ULS using aggregate real-world data for external validity. Sensitivity
+  analysis of value metrics to calibration parameter uncertainty (Monte Carlo
+  simulation).
+
+  Phase 4 — Decision-Support Pilot (M24–M36): Development of interactive
+  dashboards for ULS administrators showing synthetic VBHC metrics (cost per
+  QALY by condition, provider variation, scenario modelling). Pilot deployment
+  in 2 ULS with evaluation of decision-making impact. Policy recommendations
+  for NHS-wide adoption.
+
+budget_notes: |
+  Human resources: 1 research fellow (24mo, ~€70k) + 1 research assistant
+  (18mo, ~€40k) = €110k.
+  Expert panel: Delphi rounds, clinical validation meetings (~€12k).
+  Cloud computing: Synthea-PT runs, data processing, dashboards (~€20k).
+  Travel: ULS pilot sites, conferences, VBHC networks (~€18k).
+  Services: health economics consultancy, GDH data access (~€15k).
+  Publications: open-access fees, policy briefs (~€8k).
+  Equipment: workstations (~€7k).
+  Indirect costs (25%): ~€47.5k.
+  Total: ~€237,500 (within IC&DT €250k ceiling).
+
+ethical_considerations: |
+  The project uses exclusively synthetic data and aggregate public statistics
+  for its core analyses — no individual-level patient data is accessed. The
+  synthetic data generation engine (Synthea-PT) operates on public parameters
+  and produces non-personal data under GDPR Art. 4(1).
+
+  The ULS benchmarking exercise (Phase 3) will use aggregate, anonymised
+  hospital-level data already published through the NHS Transparency Portal.
+  The pilot deployment (Phase 4) will operate entirely on synthetic data.
+
+  Ethical approval will be sought from UA's ethics committee for the expert
+  panel (Delphi) and the ULS pilot evaluation. A DPIA will be conducted for
+  the dashboards handling aggregate ULS data.
+
+sdg_alignment:
+  - 3   # Good Health and Well-Being
+  - 9   # Industry, Innovation and Infrastructure
+  - 10  # Reduced Inequalities (equitable resource allocation)
+
+target_start_date: "2027-01-01"
+duration_months: 36
+estimated_budget: 237500

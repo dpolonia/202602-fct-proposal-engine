@@ -1,0 +1,173 @@
+# =============================================================================
+# FCT Proposal Engine — Draft Research Idea: PDSPP-Pilot
+# Exploratory Pilot of a Portuguese Synthetic Health Data Portal
+# Derived from: PDSPP Detailed Description + Roadmap (Feb 2026)
+# Typology: PEX (Exploratory) — up to €60,000 / 18 months
+# =============================================================================
+
+# --- Core Idea ---
+title: "Feasibility and Utility of a Portuguese Synthetic Health Data Portal: An Exploratory Pilot"
+title_pt: "Viabilidade e Utilidade de um Portal de Dados de Saúde Sintéticos Português: Um Piloto Exploratório"
+acronym: "PDSPP-Pilot"
+typology: "PEX"
+
+# --- Research Framing ---
+research_topic: |
+  The secondary use of health data for research, innovation, and system planning
+  is severely constrained in Portugal by data-protection requirements,
+  fragmented governance, and authorisation processes that routinely exceed
+  12–18 months. Synthetic data — algorithmically generated datasets that
+  preserve the statistical properties of real populations without containing
+  personally identifiable information (Walonoski et al., 2018; El Emam et al.,
+  2020) — offer a promising resolution. The European Health Data Space (EHDS;
+  Regulation (EU) 2025/327, Art. 60) explicitly recognises synthetic data as a
+  complementary instrument for health data access, creating a policy window
+  for early-mover countries.
+
+  This exploratory project conducts a rapid feasibility test of a Portuguese
+  Synthetic Health Data Portal by developing a minimal viable product (MVP)
+  that demonstrates end-to-end capability: ingesting public health data,
+  generating synthetic patient records via an adapted Synthea engine, serving
+  them through a FHIR-compliant API, and enabling user interaction via a
+  web-based dashboard. The pilot targets two concrete use cases — (1) academic
+  research in population health and (2) health-tech product testing — and
+  evaluates the MVP's statistical fidelity, analytical utility, and
+  user-perceived value through a structured pilot with 15–25 users from
+  academia, NHS planning, and the health-tech ecosystem.
+
+  The project builds on a functional proof-of-concept (the UOG Dashboard,
+  https://portaria-ob-gyn.web.app/) and is designed as a decision gate:
+  its results will determine whether a full-scale portal development is
+  warranted and will generate the evidence base for a subsequent IC&DT
+  application.
+
+research_questions:
+  - "RQ1: Is it technically feasible to generate synthetic patient records for the Portuguese population that achieve acceptable statistical fidelity (JS divergence < 0.05) using exclusively public data sources?"
+  - "RQ2: How do researchers and health-tech developers assess the analytical utility and practical value of synthetic Portuguese health data compared to international surrogate datasets?"
+  - "RQ3: What are the primary barriers to adoption of synthetic health data in the Portuguese research and innovation ecosystem, and what design features are critical for user engagement?"
+
+keywords_en:
+  - "synthetic health data"
+  - "feasibility pilot"
+  - "health data portal"
+  - "European Health Data Space"
+
+keywords_pt:
+  - "dados de saúde sintéticos"
+  - "piloto de viabilidade"
+  - "portal de dados de saúde"
+  - "Espaço Europeu de Dados de Saúde"
+
+scientific_domain: "Social Sciences"
+scientific_area: "Economics and Business"
+scientific_subarea: "Business and Management"
+
+# --- Team ---
+pi:
+  name: "Daniel Ferreira Polónia"
+  email: "dpolonia@ua.pt"  # UPDATE
+  institution: "Universidade de Aveiro"
+  role: "pi"
+  expertise: >
+    Digital health transformation, health data governance, synthetic population
+    modelling, web-based decision-support systems, FHIR/OMOP interoperability.
+    25+ years at the intersection of management, technology, and society.
+    Developer of UOG Dashboard (https://portaria-ob-gyn.web.app/).
+  orcid: "0000-0000-0000-0000"  # UPDATE
+
+team_members:
+  - name: "Data Engineer / Developer"  # TO DESIGNATE
+    email: "tbd@ua.pt"
+    institution: "Universidade de Aveiro"
+    role: "team_member"
+    expertise: "Full-stack development, ETL pipelines, Python, FHIR, cloud services"
+
+hirings_planned:
+  - name: "Research Fellow — Synthetic Data & Evaluation"
+    institution: "Universidade de Aveiro"
+    role: "to_hire"
+    expertise: "Synthetic data generation, statistical validation, user research, Python"
+
+# --- Institutions ---
+principal_contractor: "Universidade de Aveiro"
+research_units:
+  - "GOVCOPP"
+participating_institutions: []
+collaborative_institutions: []
+
+# --- PI Context ---
+pi_career_summary: |
+  Integrated Researcher at GOVCOPP, Universidade de Aveiro. PhD in Electrical
+  Engineering (UA, 2011). Lecturer at ISCA-UA and DEGEIT. Over 25 years at
+  the intersection of management, technology, and society, with a consolidated
+  research programme in digital health transformation, health data governance,
+  and synthetic population systems for NHS planning.
+
+  The PI has already developed a functional proof-of-concept — the UOG Dashboard
+  (https://portaria-ob-gyn.web.app/) — demonstrating the feasibility of
+  transforming public NHS data into interactive analytical tools. This prototype
+  integrates public emergency-network data with algorithmic triage models
+  (Portaria n.º 93/2026/1) and serves as the technical foundation for the
+  proposed portal MVP.
+
+  [UPDATE: Insert h-index, publications, supervised students, prior projects
+  from CIÊNCIAVITAE. For PEX, emphasise career trajectory and why this
+  exploratory grant is timely.]
+
+related_publications:
+  - "[UPDATE: Insert 3-5 publications relevant to digital health, data platforms, health informatics]"
+
+related_projects:
+  - "UOG Dashboard — Public NHS data visualisation prototype (ongoing)"
+
+methodology_notes: |
+  Phase 1 — MVP Development (M1–M9):
+  Task 1.1: ETL pipelines for 5 priority public sources (INE Census, DGS health
+  profiles, ACSS GDH summary tables, PORDATA, INSA survey aggregates).
+  Task 1.2: Synthea-PT minimal adaptation — demographic calibration (Census 2021)
+  and 3 clinical modules (diabetes, hypertension, maternal care).
+  Task 1.3: RESTful API + basic FHIR endpoint. Web dashboard for data exploration
+  and custom dataset generation. Building on UOG Dashboard architecture.
+
+  Phase 2 — Validation & Pilot (M7–M15):
+  Task 2.1: Statistical fidelity assessment (JS divergence, KS tests, correlation
+  matrices) against published aggregate NHS statistics.
+  Task 2.2: User pilot with 15–25 participants across 3 user segments (academic
+  researchers, NHS planners, health-tech developers). Mixed-methods evaluation:
+  task-based usability testing, utility assessment (can users replicate a
+  published finding?), and semi-structured interviews.
+  Task 2.3: Privacy assessment — membership inference attack simulations.
+
+  Phase 3 — Synthesis & Roadmap (M13–M18):
+  Task 3.1: Synthesis report with feasibility metrics, user feedback analysis,
+  and go/no-go recommendation for full-scale development.
+  Task 3.2: Design specification for a production portal (architecture,
+  governance model, sustainability pathway, EHDS integration points).
+  Task 3.3: Preparation of IC&DT proposal for full-scale development.
+
+budget_notes: |
+  Human resources: 1 research fellow (12mo, ~€28k).
+  Cloud infrastructure: GCP/Azure credits (~€5k).
+  Travel: user pilot visits, 1 conference (~€4k).
+  Services: UX design consultancy for dashboard (~€3k).
+  Publications and dissemination: open-access fees, policy brief (~€3k).
+  Equipment: development workstation (~€2k).
+  Indirect costs (25%): ~€11.25k.
+  Total: ~€56,250 (within PEX €60k ceiling).
+
+ethical_considerations: |
+  The project uses exclusively publicly available, aggregate data — no
+  individual-level data is accessed or processed. Synthetic data generated by
+  Synthea-PT do not constitute personal data under GDPR Art. 4(1). The user
+  pilot involves human participants (researchers, developers) who will provide
+  informed consent. Ethics approval will be sought from UA for the pilot study.
+  All pilot data (interview transcripts, usability logs) will be anonymised.
+
+sdg_alignment:
+  - 3   # Good Health and Well-Being
+  - 9   # Industry, Innovation and Infrastructure
+  - 17  # Partnerships for the Goals
+
+target_start_date: "2027-01-01"
+duration_months: 18
+estimated_budget: 56250
