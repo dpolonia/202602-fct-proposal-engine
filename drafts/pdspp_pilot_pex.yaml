@@ -61,7 +61,7 @@ pi:
     Digital health transformation, health data governance, synthetic population
     modelling, FHIR/OMOP interoperability, Value-Based Healthcare, innovation
     management. Developer of UOG Dashboard (https://portaria-ob-gyn.web.app/).
-  orcid: "0000-0001-8194-4713"
+  orcid: "0000-0000-0000-0000"  # UPDATE
 
 team_members:
   - name: "To designate — Data Engineer / Developer"
