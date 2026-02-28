@@ -190,59 +190,71 @@ gemini
 No prompt interactivo, experimenta:
 
 ```
-> Give me a summary of the CLAUDE.md file
-> What draft YAML files exist in the drafts/ folder? Summarize each.
-> Explain the pipeline architecture in src/generators/pipeline.py
+> Review src/generators/pipeline.py against the Review Mandate in GEMINI.md
+> Check src/utils/llm_client.py for missing error handling and retry logic
+> Audit all source files for hard-coded preferences that should be in config.yaml
 ```
 
 ### 6b. Prompt one-shot (sem modo interactivo)
 
 ```bash
-# Prompt directo
-gemini -p "Read drafts/pdspp_pilot_pex.yaml and suggest 3 improvements"
+# Rever o último commit
+gemini -p "Review the changes in the last commit: $(git diff HEAD~1)"
 
-# Com output JSON (útil para scripts)
-gemini -p "List the research questions in drafts/pdspp_pilot_pex.yaml" --output-format json
+# Rever um ficheiro específico
+gemini -p "Review src/reviewers/panel_reviewer.py — focus on async correctness"
+
+# Melhorar um módulo
+gemini -p "Enhance src/utils/llm_client.py — focus on reliability and retry logic"
+
+# Scan de segurança
+gemini -p "Check all Python files for leaked secrets or PII in log output"
 ```
 
-### 6c. Análise de alterações git
+### 6c. Workflow integrado com Claude Code
+
+O fluxo recomendado é: Claude Code implementa, Gemini revê.
 
 ```bash
-# Gerar mensagem de commit a partir do diff
-gemini -p "Write a commit message for these changes: $(git diff --cached)"
+# 1. Claude Code faz alterações
+claude -p "Add input validation to pipeline.py"
+
+# 2. Gemini revê as alterações
+gemini -p "Review the staged changes: $(git diff --cached). Classify as BLOCKER/ISSUE/SUGGEST"
+
+# 3. Claude Code corrige os blockers
+claude -p "Fix the blockers identified: [cola aqui o output do Gemini]"
+
+# 4. Gemini confirma
+gemini -p "Re-review: $(git diff --cached). Are all blockers resolved?"
 ```
 
 ---
 
 ## 7. Configuração avançada: GEMINI.md
 
-O Gemini CLI lê ficheiros de contexto, semelhante ao `CLAUDE.md`.
-Cria um `GEMINI.md` na raiz do projecto:
+O Gemini CLI lê o ficheiro `GEMINI.md` na raiz do projecto como contexto,
+tal como o Claude Code lê o `CLAUDE.md`. No nosso projecto, o `GEMINI.md`
+define o papel do Gemini como **code reviewer e enhancer** — não como
+construtor de funcionalidades (isso é o papel do Claude Code).
+
+O ficheiro já existe na raiz do repositório. Consulta-o para entender o
+mandato completo:
 
 ```bash
-cat > ~/202602-fct-proposal-engine/GEMINI.md << 'EOF'
-# FCT Proposal Engine — Context for Gemini CLI
-
-## Project Overview
-This is an automated engine for generating FCT (Fundação para a
-Ciência e a Tecnologia) research proposals. It uses multi-LLM
-review panels and Scopus literature search.
-
-## Key Files
-- `config.yaml` — all preferences, reviewer personas, pipeline config
-- `drafts/pdspp_pilot_pex.yaml` — current active draft (PEX, €56k, 18mo)
-- `drafts/*_complete.yaml` — comprehensive 4-proposal decomposition
-- `src/generators/pipeline.py` — main pipeline orchestrator
-- `src/utils/llm_client.py` — multi-provider LLM client
-- `docs/CLAUDE_CODE_PROMPTS.md` — 24-prompt build sequence
-
-## Conventions
-- All draft ideas follow the schema in `data/schemas/draft_idea.json`
-- Budget ceilings: IC&DT ≤ €250k/36mo, PEX ≤ €60k/18mo
-- PI: Daniel Polónia, Integrated Researcher at GOVCOPP, UA
-- Scientific domain: Social Sciences > Economics and Business
-EOF
+cat ~/202602-fct-proposal-engine/GEMINI.md
 ```
+
+Em resumo, o `GEMINI.md` instrui o Gemini CLI a:
+
+- **Rever** código produzido pelo Claude Code contra 7 dimensões
+  (correctness, architecture conformance, robustness, security,
+  code quality, testing, documentation)
+- **Classificar** achados como 🔴 BLOCKER / 🟡 ISSUE / 🟢 SUGGEST
+- **Melhorar** módulos com foco em fiabilidade, testabilidade,
+  performance e developer experience
+- **Nunca** construir funcionalidades novas, reescrever módulos inteiros,
+  ou alterar constantes regulatórias
 
 ---
 
