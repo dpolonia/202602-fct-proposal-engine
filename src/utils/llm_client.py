@@ -46,6 +46,19 @@ class BaseLLMClient(ABC):
         )
 
 
+# --- Retryable error helpers ----------------------------------------------------
+
+def _is_retryable_status(exc: Exception) -> bool:
+    """Check if an HTTP/API error has a retryable status code."""
+    exc_str = str(exc).lower()
+    return any(k in exc_str for k in ("429", "rate", "overloaded", "500", "502", "503",
+                                       "529", "timeout", "connection", "unavailable"))
+
+
+class _RetryableAPIError(Exception):
+    """Wrapper for provider errors that are safe to retry."""
+
+
 # --- Provider implementations ---------------------------------------------------
 
 class AnthropicClient(BaseLLMClient):
@@ -56,13 +69,25 @@ class AnthropicClient(BaseLLMClient):
         self.client = anthropic.AsyncAnthropic(api_key=secrets.anthropic_api_key)
         self.model = model
 
-    @retry(stop=stop_after_attempt(3), wait=wait_exponential(min=2, max=30))
+    @retry(
+        retry=retry_if_exception_type(_RetryableAPIError),
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(min=2, max=30),
+        before_sleep=lambda rs: logger.warning(
+            f"Anthropic retry {rs.attempt_number}/3 after: {rs.outcome.exception()}"
+        ),
+    )
     async def generate(self, prompt, system="", max_tokens=4096, temperature=0.3):
-        msg = await self.client.messages.create(
-            model=self.model, max_tokens=max_tokens, temperature=temperature,
-            system=system or "You are an expert academic research proposal writer.",
-            messages=[{"role": "user", "content": prompt}],
-        )
+        try:
+            msg = await self.client.messages.create(
+                model=self.model, max_tokens=max_tokens, temperature=temperature,
+                system=system or "You are an expert academic research proposal writer.",
+                messages=[{"role": "user", "content": prompt}],
+            )
+        except Exception as exc:
+            if _is_retryable_status(exc):
+                raise _RetryableAPIError(f"{type(exc).__name__}: {exc}") from exc
+            raise
         return LLMResponse(
             text=msg.content[0].text, model=self.model, provider=self.provider,
             input_tokens=msg.usage.input_tokens, output_tokens=msg.usage.output_tokens,
@@ -78,15 +103,27 @@ class OpenAIClient(BaseLLMClient):
         self.client = AsyncOpenAI(api_key=secrets.openai_api_key)
         self.model = model
 
-    @retry(stop=stop_after_attempt(3), wait=wait_exponential(min=2, max=30))
+    @retry(
+        retry=retry_if_exception_type(_RetryableAPIError),
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(min=2, max=30),
+        before_sleep=lambda rs: logger.warning(
+            f"OpenAI retry {rs.attempt_number}/3 after: {rs.outcome.exception()}"
+        ),
+    )
     async def generate(self, prompt, system="", max_tokens=4096, temperature=0.3):
         messages = []
         if system:
             messages.append({"role": "system", "content": system})
         messages.append({"role": "user", "content": prompt})
-        resp = await self.client.chat.completions.create(
-            model=self.model, messages=messages, max_tokens=max_tokens, temperature=temperature,
-        )
+        try:
+            resp = await self.client.chat.completions.create(
+                model=self.model, messages=messages, max_tokens=max_tokens, temperature=temperature,
+            )
+        except Exception as exc:
+            if _is_retryable_status(exc):
+                raise _RetryableAPIError(f"{type(exc).__name__}: {exc}") from exc
+            raise
         c = resp.choices[0]
         return LLMResponse(
             text=c.message.content or "", model=self.model, provider=self.provider,
@@ -175,15 +212,27 @@ class HuggingFaceClient(BaseLLMClient):
         self.client = AsyncInferenceClient(token=secrets.huggingface_api_key)
         self.model = model
 
-    @retry(stop=stop_after_attempt(3), wait=wait_exponential(min=2, max=30))
+    @retry(
+        retry=retry_if_exception_type(_RetryableAPIError),
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(min=2, max=30),
+        before_sleep=lambda rs: logger.warning(
+            f"HuggingFace retry {rs.attempt_number}/3 after: {rs.outcome.exception()}"
+        ),
+    )
     async def generate(self, prompt, system="", max_tokens=4096, temperature=0.3):
         messages = []
         if system:
             messages.append({"role": "system", "content": system})
         messages.append({"role": "user", "content": prompt})
-        resp = await self.client.chat_completion(
-            model=self.model, messages=messages, max_tokens=max_tokens, temperature=temperature,
-        )
+        try:
+            resp = await self.client.chat_completion(
+                model=self.model, messages=messages, max_tokens=max_tokens, temperature=temperature,
+            )
+        except Exception as exc:
+            if _is_retryable_status(exc):
+                raise _RetryableAPIError(f"{type(exc).__name__}: {exc}") from exc
+            raise
         c = resp.choices[0]
         return LLMResponse(
             text=c.message.content or "", model=self.model, provider=self.provider,
