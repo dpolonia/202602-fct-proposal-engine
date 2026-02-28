@@ -22,6 +22,7 @@ from rich.panel import Panel
 from rich.table import Table
 
 from src.config.settings import cfg
+from src.utils.sanitize import validate_path
 
 console = Console()
 
@@ -58,12 +59,16 @@ def generate(input_path, output_dir):
     """Generate a proposal from a draft idea."""
     console.print(Panel("🔬 [bold]Proposal Generator[/bold]", style="blue"))
 
+    project_root = Path(__file__).resolve().parent.parent
+    drafts_root = project_root / "drafts"
+    output_root = project_root / "output"
+
     async def _run():
         import yaml
         from src.generators.models import DraftIdea
         from src.generators.proposal_generator import ProposalGenerator
 
-        p = Path(input_path)
+        p = validate_path(input_path, drafts_root)
         data = yaml.safe_load(p.read_text()) if p.suffix in (".yaml", ".yml") else json.loads(p.read_text())
         draft = DraftIdea(**data)
         gen = ProposalGenerator()
@@ -71,7 +76,7 @@ def generate(input_path, output_dir):
         with console.status("[bold green]Generating…"):
             proposal = await gen.generate(draft)
 
-        out = Path(output_dir or cfg.output_dir)
+        out = validate_path(output_dir or cfg.output_dir, output_root)
         out.mkdir(parents=True, exist_ok=True)
         outfile = out / "proposal.json"
         outfile.write_text(proposal.model_dump_json(indent=2))
@@ -93,17 +98,21 @@ def review(input_path, output_dir):
     """Run multi-model peer review on a proposal."""
     console.print(Panel("📋 [bold]AI Peer Review[/bold]", style="yellow"))
 
+    project_root = Path(__file__).resolve().parent.parent
+    output_root = project_root / "output"
+
     async def _run():
         from src.generators.models import Proposal
         from src.reviewers.panel_reviewer import ReviewPanel
 
-        proposal = Proposal(**json.loads(Path(input_path).read_text()))
+        p = validate_path(input_path, output_root)
+        proposal = Proposal(**json.loads(p.read_text()))
         panel = ReviewPanel()
 
         with console.status("[bold yellow]Reviewing…"):
             consensus = await panel.review(proposal)
 
-        out = Path(output_dir or cfg.output_dir)
+        out = validate_path(output_dir or cfg.output_dir, output_root)
         out.mkdir(parents=True, exist_ok=True)
         outfile = out / "review.json"
         outfile.write_text(consensus.model_dump_json(indent=2))
@@ -128,9 +137,16 @@ def pipeline(input_path, output_dir, iterations):
     n = iterations if iterations is not None else cfg.iterations
     console.print(Panel(f"🚀 [bold]Full Pipeline[/bold] ({n} iterations)", style="green"))
 
+    project_root = Path(__file__).resolve().parent.parent
+    drafts_root = project_root / "drafts"
+    output_root = project_root / "output"
+
     async def _run():
         from src.generators.pipeline import run_pipeline
-        result = await run_pipeline(input_path, output_dir, iterations=n)
+
+        validated_input = str(validate_path(input_path, drafts_root))
+        validated_output = str(validate_path(output_dir, output_root)) if output_dir else None
+        result = await run_pipeline(validated_input, validated_output, iterations=n)
 
         if result.get("history"):
             t = Table(title="Iteration History")

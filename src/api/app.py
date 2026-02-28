@@ -5,30 +5,67 @@ Includes /config endpoint so users can inspect resolved settings.
 
 from __future__ import annotations
 
+import hmac
 import json
 import logging
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
-from fastapi import BackgroundTasks, FastAPI, HTTPException
+from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Security
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import APIKeyHeader
 from pydantic import BaseModel
 
 from src.config.fct_constants import CALL_DATES, CHAR_LIMITS, EVAL_CRITERIA, TYPOLOGY_RULES
 from src.config.settings import cfg, secrets
 from src.generators.models import DraftIdea, Proposal
+from src.utils.sanitize import redact_secrets
 
 logger = logging.getLogger(__name__)
+
+# --- API Key Authentication ---------------------------------------------------
+
+_api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
+
+MAX_JOBS = 1000
+JOB_TTL_SECONDS = 24 * 60 * 60  # 24 hours
+
+
+async def verify_api_key(api_key: str | None = Security(_api_key_header)) -> str:
+    """Validate the X-API-Key header. Skipped only for /health."""
+    configured_key = secrets.fct_api_key
+    if not configured_key:
+        # If no key configured, allow access (development mode)
+        return "dev"
+    if not api_key or not hmac.compare_digest(api_key, configured_key):
+        raise HTTPException(status_code=401, detail="Invalid or missing API key")
+    return api_key
+
 
 app = FastAPI(
     title="FCT Proposal Engine API",
     description="AI-powered proposal generator & multi-model peer reviewer for FCT PTDC 2025",
-    version="0.2.0",
+    version="0.3.0",
 )
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True,
                    allow_methods=["*"], allow_headers=["*"])
 
 jobs: dict[str, dict] = {}
+
+
+# --- Job cleanup --------------------------------------------------------------
+
+def _cleanup_jobs() -> int:
+    """Remove jobs older than JOB_TTL_SECONDS. Returns number removed."""
+    now = datetime.now(timezone.utc)
+    expired = [
+        jid for jid, jdata in jobs.items()
+        if (now - datetime.fromisoformat(jdata["started"].replace("Z", "+00:00"))).total_seconds()
+        > JOB_TTL_SECONDS
+    ]
+    for jid in expired:
+        del jobs[jid]
+    return len(expired)
 
 
 class JobResponse(BaseModel):
@@ -51,7 +88,7 @@ async def health() -> dict:
     return {"status": "ok", "ts": datetime.utcnow().isoformat()}
 
 
-@app.get("/config")
+@app.get("/config", dependencies=[Depends(verify_api_key)])
 async def get_config() -> dict:
     """Return resolved user settings (no secrets)."""
     return {
@@ -83,7 +120,7 @@ async def get_config() -> dict:
     }
 
 
-@app.get("/rules")
+@app.get("/rules", dependencies=[Depends(verify_api_key)])
 async def get_rules() -> dict:
     return {
         "typologies": {k.value: v.__dict__ for k, v in TYPOLOGY_RULES.items()},
@@ -93,45 +130,54 @@ async def get_rules() -> dict:
     }
 
 
-@app.post("/generate", response_model=JobResponse)
+@app.post("/generate", response_model=JobResponse, dependencies=[Depends(verify_api_key)])
 async def generate_proposal(draft: DraftIdea, bg: BackgroundTasks):
+    _cleanup_jobs()
+    if len(jobs) >= MAX_JOBS:
+        raise HTTPException(503, "Too many active jobs. Try again later.")
     job_id = str(uuid.uuid4())[:8]
-    jobs[job_id] = {"status": "running", "type": "generate", "started": datetime.utcnow().isoformat()}
+    jobs[job_id] = {"status": "running", "type": "generate", "started": datetime.now(timezone.utc).isoformat()}
     bg.add_task(_run_generate, job_id, draft)
     return JobResponse(job_id=job_id, status="running", message="Generation started.")
 
 
-@app.post("/review", response_model=JobResponse)
+@app.post("/review", response_model=JobResponse, dependencies=[Depends(verify_api_key)])
 async def review_proposal(proposal: Proposal, bg: BackgroundTasks):
+    _cleanup_jobs()
+    if len(jobs) >= MAX_JOBS:
+        raise HTTPException(503, "Too many active jobs. Try again later.")
     job_id = str(uuid.uuid4())[:8]
-    jobs[job_id] = {"status": "running", "type": "review", "started": datetime.utcnow().isoformat()}
+    jobs[job_id] = {"status": "running", "type": "review", "started": datetime.now(timezone.utc).isoformat()}
     bg.add_task(_run_review, job_id, proposal)
     return JobResponse(job_id=job_id, status="running", message="Review started.")
 
 
-@app.post("/pipeline", response_model=JobResponse)
+@app.post("/pipeline", response_model=JobResponse, dependencies=[Depends(verify_api_key)])
 async def run_pipeline_endpoint(req: PipelineRequest, bg: BackgroundTasks):
+    _cleanup_jobs()
+    if len(jobs) >= MAX_JOBS:
+        raise HTTPException(503, "Too many active jobs. Try again later.")
     job_id = str(uuid.uuid4())[:8]
-    jobs[job_id] = {"status": "running", "type": "pipeline", "started": datetime.utcnow().isoformat()}
+    jobs[job_id] = {"status": "running", "type": "pipeline", "started": datetime.now(timezone.utc).isoformat()}
     bg.add_task(_run_pipeline, job_id, req.draft, req.iterations)
     return JobResponse(job_id=job_id, status="running", message="Pipeline started.")
 
 
-@app.get("/jobs/{job_id}")
+@app.get("/jobs/{job_id}", dependencies=[Depends(verify_api_key)])
 async def get_job(job_id: str) -> dict:
     if job_id not in jobs:
         raise HTTPException(404, "Job not found")
     return jobs[job_id]
 
 
-@app.post("/validate")
+@app.post("/validate", dependencies=[Depends(verify_api_key)])
 async def validate_proposal(proposal: Proposal) -> dict:
     report = proposal.char_count_report()
     violations = {k: v for k, v in report.items() if v["remaining"] < 0}
     return {"valid": len(violations) == 0, "char_counts": report, "violations": violations}
 
 
-@app.post("/config/reload")
+@app.post("/config/reload", dependencies=[Depends(verify_api_key)])
 async def reload_config() -> dict:
     """Hot-reload config.yaml without restarting."""
     cfg.reload()
@@ -149,7 +195,7 @@ async def _run_generate(job_id: str, draft: DraftIdea) -> None:
         jobs[job_id]["status"] = "completed"
         jobs[job_id]["result"] = json.loads(proposal.model_dump_json())
     except Exception as e:
-        jobs[job_id].update(status="failed", error=str(e))
+        jobs[job_id].update(status="failed", error=redact_secrets(str(e)))
 
 
 async def _run_review(job_id: str, proposal: Proposal) -> None:
@@ -159,7 +205,7 @@ async def _run_review(job_id: str, proposal: Proposal) -> None:
         jobs[job_id]["status"] = "completed"
         jobs[job_id]["result"] = json.loads(consensus.model_dump_json())
     except Exception as e:
-        jobs[job_id].update(status="failed", error=str(e))
+        jobs[job_id].update(status="failed", error=redact_secrets(str(e)))
 
 
 async def _run_pipeline(job_id: str, draft: DraftIdea, iterations: int | None) -> None:
@@ -173,4 +219,4 @@ async def _run_pipeline(job_id: str, draft: DraftIdea, iterations: int | None) -
             "output_dir": result["output_dir"],
         }
     except Exception as e:
-        jobs[job_id].update(status="failed", error=str(e))
+        jobs[job_id].update(status="failed", error=redact_secrets(str(e)))

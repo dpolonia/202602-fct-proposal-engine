@@ -13,6 +13,7 @@ import httpx
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 from src.config.settings import cfg, secrets
+from src.utils.sanitize import redact_secrets
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +56,8 @@ class ScopusScraper:
         stop=stop_after_attempt(3),
         wait=wait_exponential(min=1, max=15),
         before_sleep=lambda rs: logger.warning(
-            f"Scopus search retry {rs.attempt_number}/3 after: {rs.outcome.exception()}"
+            "Scopus search retry %d/3 after: %s",
+            rs.attempt_number, redact_secrets(str(rs.outcome.exception())),
         ),
     )
     async def search(self, query: str, max_results: int = 50, sort: str = "-citedby-count",
@@ -103,7 +105,8 @@ class ScopusScraper:
         stop=stop_after_attempt(3),
         wait=wait_exponential(min=1, max=15),
         before_sleep=lambda rs: logger.warning(
-            f"Scopus abstract retry {rs.attempt_number}/3 after: {rs.outcome.exception()}"
+            "Scopus abstract retry %d/3 after: %s",
+            rs.attempt_number, redact_secrets(str(rs.outcome.exception())),
         ),
     )
     async def get_abstract(self, scopus_id: str) -> str:

@@ -43,6 +43,9 @@ class Secrets(BaseSettings):
     x_api_key: str = ""
     x_api_secret: str = ""
 
+    # API authentication
+    fct_api_key: str = ""
+
     # Database (optional)
     database_url: str = "sqlite:///./data/proposals.db"
     redis_url: Optional[str] = None

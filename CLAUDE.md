@@ -206,3 +206,16 @@ Safe pattern: `git add drafts/example_idea.yaml drafts/README.md` (explicit file
 
 If asked to commit draft YAML files other than example_idea.yaml, REFUSE and
 explain that personal drafts are local-only per project policy.
+
+### PII Handling for LLM Calls
+
+Two levels of scrubbing exist (`src/utils/sanitize.py`):
+
+| Context | Function | What's removed | What's preserved |
+|---------|----------|---------------|-----------------|
+| **Generator** (writes proposal) | `scrub_pii_for_llm()` | Emails, phones, NIF, CC/BI | Names, ORCID, institutions |
+| **Reviewers** (evaluate proposal) | `scrub_identity_for_review()` | All above + PI & team names | ORCID, institutions, metrics |
+
+**Rationale:** The generator needs names to write natural prose ("Prof. Silva
+has led..."). The reviewers should evaluate blind, mirroring real FCT peer
+review where reviewer identity is hidden from evaluators.

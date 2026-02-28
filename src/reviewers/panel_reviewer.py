@@ -13,10 +13,11 @@ import logging
 from src.config.fct_constants import CHAR_LIMITS
 from src.config.settings import ReviewerDef, cfg
 from src.generators.models import (
-    ConsensusReport, CriterionScore, Proposal, ReviewReport,
+    ConsensusReport, CriterionScore, DraftIdea, Proposal, ReviewReport,
 )
 from src.utils.llm_client import BaseLLMClient, get_llm_client, get_llm_for_role
 from src.utils.prompt_loader import get_prompt, load_prompt_template
+from src.utils.sanitize import scrub_identity_for_review
 
 logger = logging.getLogger(__name__)
 
@@ -36,12 +37,15 @@ class AIReviewer:
             logger.warning(f"Skipping reviewer '{definition.id}': {e}")
             self.llm = None
 
-    async def review(self, proposal: Proposal) -> ReviewReport | None:
+    async def review(
+        self, proposal: Proposal,
+        pi_name: str = "", team_names: list[str] | None = None,
+    ) -> ReviewReport | None:
         """Run a single AI reviewer against the proposal and return a structured report."""
         if not self.llm:
             return None
 
-        prompt = self._build_prompt(proposal)
+        prompt = self._build_prompt(proposal, pi_name, team_names or [])
         system = self._build_system()
 
         try:
@@ -58,7 +62,7 @@ class AIReviewer:
         instructions = get_prompt("system", "reviewer_instructions")
         return f"{persona}\n\n{instructions}"
 
-    def _build_prompt(self, p: Proposal) -> str:
+    def _build_prompt(self, p: Proposal, pi_name: str, team_names: list[str]) -> str:
         tasks_txt = "\n".join(
             f"  T{t.number}: {t.denomination} ({t.duration_months}mo, {t.person_months}PM) "
             f"— {t.description[:200]}…"
@@ -67,19 +71,23 @@ class AIReviewer:
         deliverables_txt = "\n".join(
             f"  {d.code}: {d.title} (month {d.due_month})" for d in p.deliverables
         )
+
+        # Anonymise identity-bearing fields for blind review
+        anon = lambda txt: scrub_identity_for_review(txt, pi_name, team_names)
+
         return load_prompt_template("reviewer_evaluation").format(
             title=p.title_en,
             typology=p.typology.value,
             duration=p.duration_months,
             budget=f"{p.total_budget:,.0f}",
-            abstract=p.abstract_en,
+            abstract=anon(p.abstract_en),
             state_of_art=p.state_of_art_objectives,
             research_plan=p.research_plan_methods,
             tasks=tasks_txt,
             deliverables=deliverables_txt,
-            management=p.management_structure,
-            career_profile=p.career_profile[:2000],
-            team_cv=p.team_cv_synopsis[:2000],
+            management=anon(p.management_structure),
+            career_profile=anon(p.career_profile[:2000]),
+            team_cv=anon(p.team_cv_synopsis[:2000]),
             ethics=p.ethics_justification,
             focus_criteria=", ".join(self.defn.focus_criteria),
         )
@@ -140,10 +148,20 @@ class ReviewPanel:
         self.consensus_llm = get_llm_for_role(cfg.consensus)
         logger.info(f"Panel initialised: {[d.id for d in defs]}")
 
-    async def review(self, proposal: Proposal) -> ConsensusReport:
+    async def review(
+        self, proposal: Proposal, draft: DraftIdea | None = None,
+    ) -> ConsensusReport:
         logger.info(f"Running panel review ({len(self.reviewers)} reviewers)…")
 
-        tasks = [r.review(proposal) for r in self.reviewers]
+        # Extract names for blind-review anonymisation
+        pi_name = ""
+        team_names: list[str] = []
+        if draft:
+            if draft.pi:
+                pi_name = draft.pi.name
+            team_names = [tm.name for tm in draft.team_members if tm.name]
+
+        tasks = [r.review(proposal, pi_name, team_names) for r in self.reviewers]
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
         reviews: list[ReviewReport] = []

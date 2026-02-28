@@ -12,6 +12,13 @@ COPY src/ src/
 COPY data/ data/
 COPY drafts/ drafts/
 
+# Create non-root user and set ownership
+RUN groupadd --gid 1001 appuser \
+    && useradd --uid 1001 --gid appuser --shell /bin/false appuser \
+    && chown -R appuser:appuser /app
+
+USER appuser
+
 ENV PORT=8080
 EXPOSE 8080
 

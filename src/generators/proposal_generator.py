@@ -17,6 +17,7 @@ from src.generators.models import (
 from src.scrapers.scopus_client import ScopusArticle, ScopusScraper
 from src.utils.llm_client import BaseLLMClient, get_llm_for_role
 from src.utils.prompt_loader import get_prompt, load_prompt_template
+from src.utils.sanitize import scrub_pii_for_llm
 
 logger = logging.getLogger(__name__)
 
@@ -58,6 +59,9 @@ class ProposalGenerator:
             scientific_subarea=draft.scientific_subarea, duration_months=duration,
         )
 
+        # PII-scrubbed copy for LLM prompts (names/emails replaced with role labels)
+        safe_draft = self._scrub_draft_for_llm(draft)
+
         # 3. Generate sections sequentially
         for section, limit, need_lit in [
             ("abstract_en",             CHAR_LIMITS.abstract_en,             True),
@@ -68,7 +72,7 @@ class ProposalGenerator:
             ("management_structure",    CHAR_LIMITS.management_structure,    False),
             ("ethics_justification",    CHAR_LIMITS.ethics_justification,    False),
         ]:
-            text = await self._gen(section, draft, lit_ctx if need_lit else "", proposal, limit)
+            text = await self._gen(section, safe_draft, lit_ctx if need_lit else "", proposal, limit)
             setattr(proposal, section, text)
 
         proposal.bibliographic_references = self._fmt_refs(articles)
@@ -79,14 +83,14 @@ class ProposalGenerator:
                              ("contributions_new_ideas", CHAR_LIMITS.contributions_new_ideas),
                              ("contributions_teams", CHAR_LIMITS.contributions_teams),
                              ("contributions_society", CHAR_LIMITS.contributions_society)]:
-                setattr(proposal, sec, await self._gen(sec, draft, "", proposal, lim))
+                setattr(proposal, sec, await self._gen(sec, safe_draft, "", proposal, lim))
 
         if draft.team_members:
             proposal.team_cv_synopsis = await self._gen(
-                "team_cv_synopsis", draft, "", proposal, CHAR_LIMITS.team_cv_synopsis)
+                "team_cv_synopsis", safe_draft, "", proposal, CHAR_LIMITS.team_cv_synopsis)
 
         # Tasks, deliverables, milestones
-        proposal.tasks = await self._gen_tasks(draft, proposal, duration)
+        proposal.tasks = await self._gen_tasks(safe_draft, proposal, duration)
         proposal.deliverables = await self._gen_deliverables(proposal)
         proposal.milestones = await self._gen_milestones(proposal)
         proposal.sdg_alignment = draft.sdg_alignment[:3]
@@ -96,6 +100,26 @@ class ProposalGenerator:
         return proposal
 
     # --- helpers ---------------------------------------------------------------
+
+    @staticmethod
+    def _scrub_draft_for_llm(draft: DraftIdea) -> DraftIdea:
+        """Return a copy of *draft* with contact PII (emails, phones, NIF) removed.
+
+        Names are PRESERVED because the generator needs them to write natural
+        prose (e.g. "Prof. Silva has led...").  Only the reviewer pathway
+        anonymises identities (see panel_reviewer.py).
+        """
+        d = draft.model_copy(deep=True)
+        if d.pi:
+            d.pi.email = ""
+        for tm in d.team_members:
+            tm.email = ""
+        for tm in d.hirings_planned:
+            tm.email = ""
+        d.pi_career_summary = scrub_pii_for_llm(d.pi_career_summary)
+        d.research_topic = scrub_pii_for_llm(d.research_topic)
+        d.methodology_notes = scrub_pii_for_llm(d.methodology_notes)
+        return d
 
     @staticmethod
     def _extract_json(text: str) -> str:

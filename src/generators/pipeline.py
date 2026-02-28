@@ -58,8 +58,8 @@ class Pipeline:
                 logger.info(f"ITERATION {it + 1}/{iters}")
                 logger.info("=" * 60)
 
-                # --- Review ---
-                consensus = await self.panel.review(proposal)
+                # --- Review (blind: draft names used to anonymise) ---
+                consensus = await self.panel.review(proposal, draft=draft)
                 if cfg.save_intermediates:
                     self._save_review(consensus, out / f"v{it}_review.json")
 

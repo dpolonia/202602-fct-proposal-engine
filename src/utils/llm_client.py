@@ -18,6 +18,7 @@ from tenacity import (
 
 from src.config.settings import LLMProvider, LLMRole, cfg, secrets
 from src.utils.prompt_loader import get_prompt
+from src.utils.sanitize import redact_secrets
 
 logger = logging.getLogger(__name__)
 
@@ -75,7 +76,8 @@ class AnthropicClient(BaseLLMClient):
         stop=stop_after_attempt(3),
         wait=wait_exponential(min=2, max=30),
         before_sleep=lambda rs: logger.warning(
-            f"Anthropic retry {rs.attempt_number}/3 after: {rs.outcome.exception()}"
+            "Anthropic retry %d/3 after: %s",
+            rs.attempt_number, redact_secrets(str(rs.outcome.exception())),
         ),
     )
     async def generate(self, prompt, system="", max_tokens=4096, temperature=0.3):
@@ -87,7 +89,7 @@ class AnthropicClient(BaseLLMClient):
             )
         except Exception as exc:
             if _is_retryable_status(exc):
-                raise _RetryableAPIError(f"{type(exc).__name__}: {exc}") from exc
+                raise _RetryableAPIError(redact_secrets(f"{type(exc).__name__}: {exc}")) from exc
             raise
         return LLMResponse(
             text=msg.content[0].text, model=self.model, provider=self.provider,
@@ -109,7 +111,8 @@ class OpenAIClient(BaseLLMClient):
         stop=stop_after_attempt(3),
         wait=wait_exponential(min=2, max=30),
         before_sleep=lambda rs: logger.warning(
-            f"OpenAI retry {rs.attempt_number}/3 after: {rs.outcome.exception()}"
+            "OpenAI retry %d/3 after: %s",
+            rs.attempt_number, redact_secrets(str(rs.outcome.exception())),
         ),
     )
     async def generate(self, prompt, system="", max_tokens=4096, temperature=0.3):
@@ -123,7 +126,7 @@ class OpenAIClient(BaseLLMClient):
             )
         except Exception as exc:
             if _is_retryable_status(exc):
-                raise _RetryableAPIError(f"{type(exc).__name__}: {exc}") from exc
+                raise _RetryableAPIError(redact_secrets(f"{type(exc).__name__}: {exc}")) from exc
             raise
         c = resp.choices[0]
         return LLMResponse(
@@ -151,7 +154,8 @@ class GoogleClient(BaseLLMClient):
         stop=stop_after_attempt(4),
         wait=wait_exponential(min=2, max=60),
         before_sleep=lambda rs: logger.warning(
-            f"Gemini retry {rs.attempt_number}/4 after: {rs.outcome.exception()}"
+            "Gemini retry %d/4 after: %s",
+            rs.attempt_number, redact_secrets(str(rs.outcome.exception())),
         ),
     )
     async def generate(self, prompt, system="", max_tokens=4096, temperature=0.3):
@@ -171,9 +175,9 @@ class GoogleClient(BaseLLMClient):
             # Rate-limit, quota, and transient server errors are retryable
             if any(k in exc_str for k in ("429", "rate", "quota", "resource_exhausted",
                                            "500", "503", "unavailable", "deadline")):
-                raise _GeminiRetryableError(f"{exc_name}: {exc}") from exc
+                raise _GeminiRetryableError(redact_secrets(f"{exc_name}: {exc}")) from exc
             # Auth, invalid request, and permission errors are not
-            logger.error(f"Gemini non-retryable error ({exc_name}): {exc}")
+            logger.error("Gemini non-retryable error (%s): %s", exc_name, redact_secrets(str(exc)))
             raise
 
         # Handle safety-blocked or empty responses
@@ -215,7 +219,8 @@ class HuggingFaceClient(BaseLLMClient):
         stop=stop_after_attempt(3),
         wait=wait_exponential(min=2, max=30),
         before_sleep=lambda rs: logger.warning(
-            f"HuggingFace retry {rs.attempt_number}/3 after: {rs.outcome.exception()}"
+            "HuggingFace retry %d/3 after: %s",
+            rs.attempt_number, redact_secrets(str(rs.outcome.exception())),
         ),
     )
     async def generate(self, prompt, system="", max_tokens=4096, temperature=0.3):
@@ -229,7 +234,7 @@ class HuggingFaceClient(BaseLLMClient):
             )
         except Exception as exc:
             if _is_retryable_status(exc):
-                raise _RetryableAPIError(f"{type(exc).__name__}: {exc}") from exc
+                raise _RetryableAPIError(redact_secrets(f"{type(exc).__name__}: {exc}")) from exc
             raise
         c = resp.choices[0]
         return LLMResponse(

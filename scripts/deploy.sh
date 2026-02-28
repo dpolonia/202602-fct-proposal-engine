@@ -32,7 +32,7 @@ if [[ "${1:-}" == "--init" ]]; then
         --location="${REGION}" 2>/dev/null || true
 
     echo "🔐 Creating secrets (add values via GCP Console or gcloud)..."
-    for secret in anthropic-api-key openai-api-key google-api-key huggingface-api-key scopus-api-key; do
+    for secret in anthropic-api-key openai-api-key google-api-key huggingface-api-key scopus-api-key fct-api-key; do
         gcloud secrets create "${secret}" --replication-policy="automatic" 2>/dev/null || true
     done
 
@@ -59,8 +59,8 @@ gcloud run deploy "${SERVICE_NAME}" \
     --concurrency 10 \
     --min-instances 0 \
     --max-instances 3 \
-    --set-secrets="ANTHROPIC_API_KEY=anthropic-api-key:latest,OPENAI_API_KEY=openai-api-key:latest,GOOGLE_API_KEY=google-api-key:latest,HUGGINGFACE_API_KEY=huggingface-api-key:latest,SCOPUS_API_KEY=scopus-api-key:latest" \
-    --allow-unauthenticated
+    --set-secrets="ANTHROPIC_API_KEY=anthropic-api-key:latest,OPENAI_API_KEY=openai-api-key:latest,GOOGLE_API_KEY=google-api-key:latest,HUGGINGFACE_API_KEY=huggingface-api-key:latest,SCOPUS_API_KEY=scopus-api-key:latest,FCT_API_KEY=fct-api-key:latest" \
+    --no-allow-unauthenticated
 
 URL=$(gcloud run services describe "${SERVICE_NAME}" --region "${REGION}" --format="value(status.url)")
 echo ""

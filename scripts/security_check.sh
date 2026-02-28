@@ -20,8 +20,8 @@ RST='\033[0m'
 BLOCKERS=0
 WARNINGS=0
 
-blocker() { echo -e "${RED}🔴 BLOCKER:${RST} $1"; ((BLOCKERS++)); }
-warning() { echo -e "${YLW}🟡 WARNING:${RST} $1"; ((WARNINGS++)); }
+blocker() { echo -e "${RED}🔴 BLOCKER:${RST} $1"; BLOCKERS=$((BLOCKERS + 1)); }
+warning() { echo -e "${YLW}🟡 WARNING:${RST} $1"; WARNINGS=$((WARNINGS + 1)); }
 pass()    { echo -e "${GRN}  ✓${RST} $1"; }
 
 echo "═══════════════════════════════════════════════════════════"
@@ -52,7 +52,7 @@ echo "── 1. Secrets & Credentials ──"
 
 # 1a. API keys in source code
 API_KEY_PATTERNS='(sk-ant-|sk-proj-|AIzaSy|ghp_|gho_|AKIA[0-9A-Z]|xoxb-|xoxp-|hf_[a-zA-Z0-9])'
-HITS=$(echo "$FILES" | xargs grep -rPn "$API_KEY_PATTERNS" 2>/dev/null | grep -v '.env' | grep -v '.gitignore' | grep -v 'security_check\.sh' | grep -v 'docs/' | grep -v 'tutorial' | grep -v '\.\.\.COLA' | grep -v 'sk-ant-\.\.\.' || true)
+HITS=$(echo "$FILES" | xargs grep -rPn "$API_KEY_PATTERNS" 2>/dev/null | grep -v '.env' | grep -v '.gitignore' | grep -v 'security_check\.sh' | grep -v 'sanitize\.py' | grep -v 'test_security\.py' | grep -v 'docs/' | grep -v 'tutorial' | grep -v '\.\.\.COLA' | grep -v 'sk-ant-\.\.\.' || true)
 if [[ -n "$HITS" ]]; then
     blocker "Possible API keys/tokens found in source:"
     echo "$HITS" | head -10 | sed 's/^/         /'
@@ -61,7 +61,7 @@ else
 fi
 
 # 1b. .env committed
-ENV_STAGED=$(echo "$FILES" | grep -E '^\.env' || true)
+ENV_STAGED=$(echo "$FILES" | grep -E '^\.env$|^\.env\.' | grep -v '\.env\.example' || true)
 if [[ -n "$ENV_STAGED" ]]; then
     blocker ".env file is staged for commit — remove with: git reset HEAD .env"
 else
@@ -193,7 +193,7 @@ echo "── 5. Dependency Safety ──"
 
 # 5a. Requirements pinning
 if [[ -f "pyproject.toml" ]]; then
-    UNPINNED=$(grep -P '^\s*"[a-zA-Z].*[^=]",$' pyproject.toml 2>/dev/null | grep -v '>=' | head -5 || true)
+    UNPINNED=$(grep -P '^\s*"[a-zA-Z].*[^=]",$' pyproject.toml 2>/dev/null | grep -v '>=' | grep -v '==' | head -5 || true)
     if [[ -n "$UNPINNED" ]]; then
         warning "Some dependencies may not be pinned in pyproject.toml (verify):"
         echo "$UNPINNED" | sed 's/^/         /'
@@ -205,6 +205,20 @@ fi
 # 5b. requirements.txt with known issues
 if [[ -f "requirements.txt" ]]; then
     warning "requirements.txt exists alongside pyproject.toml — ensure they are in sync"
+fi
+
+# 5c. pip-audit vulnerability scan
+if command -v pip-audit &>/dev/null; then
+    AUDIT_OUT=$(pip-audit --strict --progress-spinner=off 2>&1 || true)
+    VULN_COUNT=$(echo "$AUDIT_OUT" | grep -c "^Name" || true)
+    if echo "$AUDIT_OUT" | grep -q "found [1-9]"; then
+        warning "pip-audit found known vulnerabilities:"
+        echo "$AUDIT_OUT" | grep -v "^$" | head -15 | sed 's/^/         /'
+    else
+        pass "pip-audit: no known vulnerabilities"
+    fi
+else
+    warning "pip-audit not installed (pip install pip-audit)"
 fi
 echo ""
 
