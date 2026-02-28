@@ -5,7 +5,6 @@ Reads provider/model from config.yaml (via cfg), API keys from .env (via secrets
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
@@ -161,11 +160,8 @@ class GoogleClient(BaseLLMClient):
             max_output_tokens=max_tokens, temperature=temperature,
         )
         try:
-            loop = asyncio.get_event_loop()
-            resp = await loop.run_in_executor(
-                None, lambda: self.client.models.generate_content(
-                    model=self.model, contents=prompt, config=config,
-                ),
+            resp = await self.client.aio.models.generate_content(
+                model=self.model, contents=prompt, config=config,
             )
         except Exception as exc:
             exc_name = type(exc).__name__
