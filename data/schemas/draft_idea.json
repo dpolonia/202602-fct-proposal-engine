@@ -1,9 +1,28 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "DraftIdea",
-  "description": "Input schema for an FCT PTDC 2025 research idea",
+  "description": "Input schema for an FCT PTDC 2025 research idea — mirrors the Pydantic DraftIdea model in src/generators/models.py",
   "type": "object",
   "required": ["title", "research_topic"],
+  "definitions": {
+    "TeamMember": {
+      "type": "object",
+      "required": ["name", "institution"],
+      "properties": {
+        "name": { "type": "string" },
+        "email": { "type": "string", "format": "email", "default": "" },
+        "institution": { "type": "string" },
+        "role": {
+          "type": "string",
+          "enum": ["pi", "co_pi", "team_member", "to_hire", "consultant"],
+          "default": "team_member"
+        },
+        "expertise": { "type": "string", "default": "" },
+        "orcid": { "type": "string", "default": "" }
+      },
+      "additionalProperties": false
+    }
+  },
   "properties": {
     "title": {
       "type": "string",
@@ -44,10 +63,87 @@
       "items": { "type": "string" },
       "maxItems": 4
     },
+    "scientific_domain": {
+      "type": "string",
+      "description": "FCT scientific domain"
+    },
+    "scientific_area": {
+      "type": "string",
+      "description": "FCT scientific area"
+    },
+    "scientific_subarea": {
+      "type": "string",
+      "description": "FCT scientific subarea"
+    },
+    "pi": {
+      "$ref": "#/definitions/TeamMember",
+      "description": "Principal Investigator"
+    },
+    "team_members": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/TeamMember" },
+      "description": "Existing team members"
+    },
+    "hirings_planned": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/TeamMember" },
+      "description": "Team members to be hired"
+    },
+    "principal_contractor": {
+      "type": "string",
+      "description": "Lead institution"
+    },
+    "research_units": {
+      "type": "array",
+      "items": { "type": "string" },
+      "maxItems": 3,
+      "description": "Research units (max 3 per institution)"
+    },
+    "participating_institutions": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Institutions with budget allocation"
+    },
+    "collaborative_institutions": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Institutions without budget allocation"
+    },
+    "pi_career_summary": {
+      "type": "string",
+      "description": "PI career narrative for proposal generation"
+    },
+    "related_publications": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Key publications by the PI/team"
+    },
+    "related_projects": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Previous/related funded projects"
+    },
+    "methodology_notes": {
+      "type": "string",
+      "description": "Methodological approach notes"
+    },
+    "budget_notes": {
+      "type": "string",
+      "description": "Budget justification notes"
+    },
+    "ethical_considerations": {
+      "type": "string",
+      "description": "Ethics and GDPR considerations"
+    },
     "sdg_alignment": {
       "type": "array",
       "items": { "type": "integer", "minimum": 1, "maximum": 17 },
-      "maxItems": 3
+      "maxItems": 3,
+      "description": "UN Sustainable Development Goals (1-17)"
+    },
+    "target_start_date": {
+      "type": "string",
+      "description": "Expected project start date (YYYY-MM-DD)"
     },
     "duration_months": {
       "type": "integer",
@@ -59,5 +155,6 @@
       "minimum": 0,
       "maximum": 250000
     }
-  }
+  },
+  "additionalProperties": false
 }
