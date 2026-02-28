@@ -9,7 +9,6 @@ import json
 import logging
 import uuid
 from datetime import datetime
-from pathlib import Path
 
 from fastapi import BackgroundTasks, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -143,7 +142,7 @@ async def reload_config():
 # Background tasks
 # =============================================================================
 
-async def _run_generate(job_id, draft):
+async def _run_generate(job_id: str, draft: DraftIdea) -> None:
     try:
         from src.generators.proposal_generator import ProposalGenerator
         proposal = await ProposalGenerator().generate(draft)
@@ -153,7 +152,7 @@ async def _run_generate(job_id, draft):
         jobs[job_id].update(status="failed", error=str(e))
 
 
-async def _run_review(job_id, proposal):
+async def _run_review(job_id: str, proposal: Proposal) -> None:
     try:
         from src.reviewers.panel_reviewer import ReviewPanel
         consensus = await ReviewPanel().review(proposal)
@@ -163,7 +162,7 @@ async def _run_review(job_id, proposal):
         jobs[job_id].update(status="failed", error=str(e))
 
 
-async def _run_pipeline(job_id, draft, iterations):
+async def _run_pipeline(job_id: str, draft: DraftIdea, iterations: int | None) -> None:
     try:
         from src.generators.pipeline import Pipeline
         result = await Pipeline().run(draft, iterations=iterations)
