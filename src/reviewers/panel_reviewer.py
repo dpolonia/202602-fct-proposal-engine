@@ -37,6 +37,7 @@ class AIReviewer:
             self.llm = None
 
     async def review(self, proposal: Proposal) -> ReviewReport | None:
+        """Run a single AI reviewer against the proposal and return a structured report."""
         if not self.llm:
             return None
 
@@ -256,7 +257,7 @@ class RevisionEngine:
 
         return revised
 
-    def _weak_sections(self, consensus):
+    def _weak_sections(self, consensus: ConsensusReport) -> list[tuple[str, int]]:
         sections = []
         for r in consensus.individual_reviews:
             for cs in r.criterion_scores:
@@ -272,7 +273,7 @@ class RevisionEngine:
                         sections.append(("management_structure", CHAR_LIMITS.management_structure))
         return list(dict.fromkeys(sections))
 
-    def _feedback_for(self, section, consensus):
+    def _feedback_for(self, section: str, consensus: ConsensusReport) -> str:
         mapping = {
             "state_of_art_objectives": ["A1", "A2", "A"],
             "research_plan_methods": ["A1", "C"],

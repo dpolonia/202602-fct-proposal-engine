@@ -5,9 +5,6 @@ Data models for the entire proposal lifecycle:
 
 from __future__ import annotations
 
-from datetime import date
-from typing import Optional
-
 from pydantic import BaseModel, Field
 
 from src.config.fct_constants import DeliverableType, ProjectType

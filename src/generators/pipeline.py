@@ -35,6 +35,7 @@ class Pipeline:
         iterations: int | None = None,
         output_dir: Path | None = None,
     ) -> dict:
+        """Run the full generate-review-revise pipeline for the given draft idea."""
         iters = iterations if iterations is not None else cfg.iterations
         out = output_dir or Path(cfg.output_dir) / datetime.now().strftime("%Y%m%d_%H%M%S")
         out.mkdir(parents=True, exist_ok=True)

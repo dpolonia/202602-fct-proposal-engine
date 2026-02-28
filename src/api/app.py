@@ -47,12 +47,12 @@ class PipelineRequest(BaseModel):
 # =============================================================================
 
 @app.get("/health")
-async def health():
+async def health() -> dict:
     return {"status": "ok", "ts": datetime.utcnow().isoformat()}
 
 
 @app.get("/config")
-async def get_config():
+async def get_config() -> dict:
     """Return resolved user settings (no secrets)."""
     return {
         "project": {
@@ -84,7 +84,7 @@ async def get_config():
 
 
 @app.get("/rules")
-async def get_rules():
+async def get_rules() -> dict:
     return {
         "typologies": {k.value: v.__dict__ for k, v in TYPOLOGY_RULES.items()},
         "character_limits": CHAR_LIMITS.__dict__,
@@ -118,21 +118,21 @@ async def run_pipeline_endpoint(req: PipelineRequest, bg: BackgroundTasks):
 
 
 @app.get("/jobs/{job_id}")
-async def get_job(job_id: str):
+async def get_job(job_id: str) -> dict:
     if job_id not in jobs:
         raise HTTPException(404, "Job not found")
     return jobs[job_id]
 
 
 @app.post("/validate")
-async def validate_proposal(proposal: Proposal):
+async def validate_proposal(proposal: Proposal) -> dict:
     report = proposal.char_count_report()
     violations = {k: v for k, v in report.items() if v["remaining"] < 0}
     return {"valid": len(violations) == 0, "char_counts": report, "violations": violations}
 
 
 @app.post("/config/reload")
-async def reload_config():
+async def reload_config() -> dict:
     """Hot-reload config.yaml without restarting."""
     cfg.reload()
     return {"status": "reloaded"}

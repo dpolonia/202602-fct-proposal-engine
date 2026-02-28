@@ -14,7 +14,7 @@ from src.config.settings import cfg
 from src.generators.models import (
     Deliverable, DraftIdea, Milestone, Proposal, ProposalTask,
 )
-from src.scrapers.scopus_client import ScopusScraper
+from src.scrapers.scopus_client import ScopusArticle, ScopusScraper
 from src.utils.llm_client import BaseLLMClient, get_llm_for_role
 from src.utils.prompt_loader import get_prompt, load_prompt_template
 
@@ -27,6 +27,7 @@ class ProposalGenerator:
         self.scopus = scopus or ScopusScraper()
 
     async def generate(self, draft: DraftIdea) -> Proposal:
+        """Transform a DraftIdea into a complete FCT PTDC proposal with literature, tasks, and budget."""
         logger.info(f"Generating proposal: {draft.title}")
 
         # Apply config.yaml defaults to draft where the draft is empty
@@ -112,7 +113,7 @@ class ProposalGenerator:
                 return clean[start:end + 1]
         return clean
 
-    async def _gen(self, section, draft, lit, proposal, limit):
+    async def _gen(self, section: str, draft: DraftIdea, lit: str, proposal: Proposal, limit: int) -> str:
         prompt = self._prompt(section, draft, lit, proposal, limit)
         system = get_prompt("system", "generator")
         resp = await self.llm.generate(prompt, system=system, max_tokens=limit * 2,
@@ -123,14 +124,14 @@ class ProposalGenerator:
         logger.info(f"  {section}: {len(text)}/{limit} chars")
         return text
 
-    async def _trim(self, text, limit, section):
+    async def _trim(self, text: str, limit: int, section: str) -> str:
         resp = await self.llm.generate(
             f"Condense this '{section}' section to ≤{limit} chars, keeping key arguments.\n\n{text}",
             max_tokens=limit, temperature=0.1)
         r = resp.text.strip()
         return r[:limit] if len(r) > limit else r
 
-    async def _gen_tasks(self, draft, proposal, duration):
+    async def _gen_tasks(self, draft: DraftIdea, proposal: Proposal, duration: int) -> list[ProposalTask]:
         prompt = load_prompt_template("proposal_tasks").format(
             topic=draft.research_topic[:500],
             research_questions="; ".join(draft.research_questions),
@@ -159,7 +160,7 @@ class ProposalGenerator:
             logger.error(f"Task parse error: {e}")
             return self._fallback_tasks(duration)
 
-    async def _gen_deliverables(self, proposal):
+    async def _gen_deliverables(self, proposal: Proposal) -> list[Deliverable]:
         summary = "\n".join(f"T{t.number}: {t.denomination} (m{t.start_month}–{t.start_month+t.duration_months-1})"
                             for t in proposal.tasks)
         prompt = load_prompt_template("proposal_deliverables").format(
@@ -176,7 +177,7 @@ class ProposalGenerator:
         except Exception:
             return []
 
-    async def _gen_milestones(self, proposal):
+    async def _gen_milestones(self, proposal: Proposal) -> list[Milestone]:
         summary = "\n".join(f"T{t.number}: {t.denomination}" for t in proposal.tasks)
         prompt = load_prompt_template("proposal_milestones").format(
             tasks_summary=summary,
@@ -193,7 +194,7 @@ class ProposalGenerator:
         except Exception:
             return []
 
-    def _prompt(self, section, draft, lit, proposal, limit):
+    def _prompt(self, section: str, draft: DraftIdea, lit: str, proposal: Proposal, limit: int) -> str:
         base = load_prompt_template("proposal_system").format(
             section=section,
             title=draft.title,
@@ -216,7 +217,7 @@ class ProposalGenerator:
             base += extras[section]
         return base
 
-    def _lit_context(self, articles):
+    def _lit_context(self, articles: list[ScopusArticle]) -> str:
         if not articles:
             return ""
         lines = [f"- {a.authors} ({a.year}): {a.title}. {a.journal}. [Cited: {a.citation_count}]"
@@ -224,18 +225,18 @@ class ProposalGenerator:
         abstracts = [f"({a.authors}, {a.year}): {a.abstract[:300]}…" for a in articles[:5] if a.abstract]
         return "LITERATURE:\n" + "\n".join(lines) + "\n\nABSTRACTS:\n" + "\n".join(abstracts)
 
-    def _fmt_refs(self, articles):
+    def _fmt_refs(self, articles: list[ScopusArticle]) -> str:
         if not articles:
             return ""
         return "\n".join(f"[{i}] {a.apa_reference}" for i, a in enumerate(articles[:30], 1))[:CHAR_LIMITS.bibliographic_references]
 
-    def _est_budget(self, proposal):
+    def _est_budget(self, proposal: Proposal) -> float:
         direct = sum(t.budget.direct_costs for t in proposal.tasks)
         if direct == 0:
             return TYPOLOGY_RULES[proposal.typology].max_funding_eur * 0.8
         return direct * 1.25
 
-    def _fallback_tasks(self, dur):
+    def _fallback_tasks(self, dur: int) -> list[ProposalTask]:
         return [
             ProposalTask(number=1, denomination="Literature Review & Framework", description="SLR and framework.", person_months=4, start_month=1, duration_months=6),
             ProposalTask(number=2, denomination="Data Collection", description="Primary data collection.", person_months=8, start_month=4, duration_months=12),
