@@ -10,7 +10,7 @@ import logging
 from dataclasses import dataclass, field
 
 import httpx
-from tenacity import retry, stop_after_attempt, wait_exponential
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 from src.config.settings import cfg, secrets
 
@@ -86,14 +86,26 @@ class ScopusScraper:
         logger.info(f"Scopus: {len(articles)} articles for: {query[:80]}…")
         return articles[:max_results]
 
+    @retry(
+        retry=retry_if_exception_type((httpx.TimeoutException, httpx.NetworkError)),
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(min=1, max=15),
+        before_sleep=lambda rs: logger.warning(
+            f"Scopus abstract retry {rs.attempt_number}/3 after: {rs.outcome.exception()}"
+        ),
+    )
     async def get_abstract(self, scopus_id: str) -> str:
         url = f"{SCOPUS_ABSTRACT_URL}/{scopus_id}"
         async with httpx.AsyncClient(timeout=15.0) as client:
             resp = await client.get(url, headers=self.headers)
-            if resp.status_code != 200:
-                return ""
-            core = resp.json().get("abstracts-retrieval-response", {}).get("coredata", {})
-            return core.get("dc:description", "")
+            if resp.status_code == 200:
+                core = resp.json().get("abstracts-retrieval-response", {}).get("coredata", {})
+                return core.get("dc:description", "")
+            if resp.status_code in (429, 500, 502, 503, 504):
+                logger.warning(f"Scopus abstract {scopus_id}: transient HTTP {resp.status_code}")
+                raise httpx.NetworkError(f"HTTP {resp.status_code}")
+            logger.warning(f"Scopus abstract {scopus_id}: HTTP {resp.status_code} (not retryable)")
+            return ""
 
     async def search_for_proposal(self, topic: str, keywords: list[str],
                                    max_results: int | None = None,
