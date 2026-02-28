@@ -205,16 +205,28 @@ class ProposalGenerator:
         )
         if lit:
             base += f"\n{lit}\n"
-        extras = {
-            "state_of_art_objectives": "Focus on Criterion A (40%): identify the knowledge gap, articulate originality. Do NOT describe methodology.",
-            "research_plan_methods": f"Detail methodology. SotA excerpt: {proposal.state_of_art_objectives[:1500]}",
-            "abstract_pt": f"Translate to Portuguese. EN abstract: {proposal.abstract_en[:2500]}",
-            "institution_description": f"Describe {draft.principal_contractor}. Units: {', '.join(draft.research_units)}",
-            "career_profile": f"PI summary: {draft.pi_career_summary[:1500]}",
-            "management_structure": f"Tasks: {', '.join(f'T{t.number}' for t in proposal.tasks)}",
+        section_prompts = {
+            "state_of_art_objectives": {},
+            "research_plan_methods": {
+                "sota_excerpt": proposal.state_of_art_objectives[:1500],
+            },
+            "abstract_pt": {
+                "abstract_en": proposal.abstract_en[:2500],
+            },
+            "institution_description": {
+                "principal_contractor": draft.principal_contractor,
+                "research_units": ", ".join(draft.research_units),
+            },
+            "career_profile": {
+                "pi_career_summary": draft.pi_career_summary[:1500],
+            },
+            "management_structure": {
+                "tasks_list": ", ".join(f"T{t.number}" for t in proposal.tasks),
+            },
         }
-        if section in extras:
-            base += extras[section]
+        if section in section_prompts:
+            tpl = load_prompt_template(f"section_{section}")
+            base += tpl.format(**section_prompts[section])
         return base
 
     def _lit_context(self, articles: list[ScopusArticle]) -> str:

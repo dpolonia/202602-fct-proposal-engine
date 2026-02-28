@@ -1,0 +1,1 @@
+Detail methodology. SotA excerpt: {sota_excerpt}
