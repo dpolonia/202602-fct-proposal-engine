@@ -85,30 +85,38 @@ collaborative_institutions: []
 
 # --- PI Context ---
 pi_career_summary: |
-  Integrated Researcher at GOVCOPP (since 2015) and Professor at ISCA-UA,
-  Universidade de Aveiro. PhD in Electrical Engineering (UA, 2011). Scopus:
-  28 documents, 152 citations, h-index 6. Over 25 years integrating management,
-  technology, and society, with a consolidated research line in digital health
-  transformation, health data governance, innovation management, and VBHC.
+  Integrated Researcher at GOVCOPP and Professor at ISCA-UA, Universidade de
+  Aveiro (since 2015). PhD in Electrical Engineering (UA, 2011). Scopus:
+  28 documents, 152 citations, h-index 6. A 25-year career at the intersection
+  of management, technology, and health systems, with a consolidated research
+  programme in digital health transformation, health data governance, and
+  synthetic population modelling.
 
-  Extensive project coordination experience including EU-funded research:
-  coordinator of the H2020 P4E-PEER4EXCELLENCE project (CSA, 2016–2017);
-  UA project manager for INTERREG INNHOSPITAL (2019–2022, €790k total);
-  coordinator of the MESTRa electronic teleradiology marketplace (QREN, 2013–
-  2015); member of EU FP6 InfoBioMed network of excellence (2004–2007) and
-  Infogenmed project (2003–2004). Led consultancy projects for the Portuguese
-  Health Regulatory Authority (ERS) and the Directorate-General of Health (DGS).
+  Proven track record in coordinating multi-partner, internationally funded
+  research. As coordinator of the H2020 P4E-PEER4EXCELLENCE project (CSA
+  730828, 2016–2017), led a European consortium focused on research excellence
+  and institutional capacity-building. As UA project manager for the INTERREG
+  INNHOSPITAL project (0610_INNHOSPITAL_6_E, 2019–2022, €790k total budget),
+  managed cross-border health innovation activities integrating Portuguese and
+  Spanish hospital networks. Previously coordinated the QREN-funded MESTRa
+  electronic teleradiology marketplace (2013–2015, €312k), delivering a
+  production-grade platform for remote radiology services. Earlier career
+  includes participation in EU FP6 networks of excellence (InfoBioMed, 2004–
+  2007; Infogenmed, 2003–2004) and consultancy for the Portuguese Health
+  Regulatory Authority (ERS) and Directorate-General of Health (DGS).
 
-  Currently completing doctoral research in Management (UA) on the role of
-  the EHDS in implementing VBHC in Beveridgean health systems (coursework
-  completed, average 16.2/20). Developer of the UOG Dashboard prototype
-  (https://portaria-ob-gyn.web.app/) integrating public NHS data with
-  algorithmic triage models regulated by Portaria n.º 93/2026/1.
+  This project coordination experience — spanning H2020, INTERREG, and QREN
+  programmes with a combined managed budget exceeding €1.1M — directly
+  underpins the PI's capacity to deliver the proposed PEX within timeline and
+  budget. The PI has also developed the UOG Dashboard prototype
+  (https://portaria-ob-gyn.web.app/), demonstrating hands-on capability in
+  transforming public NHS data into analytical decision-support tools — the
+  exact technical competence required for PDSPP-Pilot.
 
-  Teaching evaluation: Excellent (92.98, 2021–2023 cycle). Supervised 27+
-  MSc dissertations; external examiner in 3 PhD juries. Reviewer for multiple
-  Scopus-indexed journals. Invited speaker on AI, health informatics, and EHDS
-  topics at Portuguese and international institutions.
+  Supervised 27+ MSc dissertations; external examiner in 3 PhD juries.
+  Teaching evaluation: Excellent (92.98, 2021–2023 cycle). Reviewer for
+  Scopus-indexed journals. Invited speaker on AI, health informatics, and
+  EHDS topics at Portuguese and international institutions.
 
 related_publications:
   - "Nuno, F., Gradim, A., Dias, A., Polónia, D. (2022). Value-based healthcare and radiology: how can value be measured? Journal of Health Management. https://doi.org/10.1177/09720634221128075"
