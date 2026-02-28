@@ -124,11 +124,11 @@ class TestProposal:
         report = p.char_count_report()
         assert all(v["actual"] == 0 for v in report.values())
 
-    def test_over_limit_detection(self):
-        p = Proposal(abstract_en="x" * 6000)
+    def test_at_limit_detection(self):
+        p = Proposal(abstract_en="x" * CHAR_LIMITS.abstract_en)
         r = p.char_count_report()
-        assert r["abstract_en"]["actual"] == 6000
-        assert r["abstract_en"]["remaining"] == CHAR_LIMITS.abstract_en - 6000
+        assert r["abstract_en"]["actual"] == CHAR_LIMITS.abstract_en
+        assert r["abstract_en"]["remaining"] == 0
 
     def test_task_budget(self):
         t = ProposalTask(number=1, denomination="T", description="D")
@@ -238,6 +238,6 @@ class TestLLMFactory:
         # Unless the tester actually has all keys, at least one will be missing
         # This test simply ensures the check path doesn't crash
         try:
-            get_llm_client(provider="anthropic", model="claude-sonnet-4-5-20250929")
+            get_llm_client(provider="anthropic", model="claude-opus-4-6")
         except ValueError as e:
             assert "API key" in str(e)

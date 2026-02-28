@@ -9,7 +9,7 @@ Takes a draft research idea → produces a submission-ready proposal → runs it
 ## Quick Start
 
 ```bash
-git clone https://github.com/YOUR_ORG/fct-proposal-engine.git
+git clone https://github.com/dpolonia/202602-fct-proposal-engine.git
 cd fct-proposal-engine
 
 # 1. Install
@@ -47,34 +47,34 @@ project:
 
 # Choose which LLM writes each part of the pipeline
 llm:
-  generator:   { provider: anthropic, model: claude-sonnet-4-5-20250929 }
-  consensus:   { provider: anthropic, model: claude-sonnet-4-5-20250929 }
-  revision:    { provider: anthropic, model: claude-sonnet-4-5-20250929 }
+  generator:   { provider: anthropic, model: claude-opus-4-6 }
+  consensus:   { provider: anthropic, model: claude-opus-4-6 }
+  revision:    { provider: anthropic, model: claude-opus-4-6 }
 
 # Define your AI peer-review panel (add, remove, or disable reviewers)
 review_panel:
   - id: claude_rigor
     provider: anthropic
-    model: claude-sonnet-4-5-20250929
+    model: claude-opus-4-6
     perspective: scientific_rigor
     focus_criteria: [A1, B1]
-    persona: "Senior methodologist, 15 years on FCT panels…"
-  - id: gpt4o_innovation
+    persona: "Senior methodologist, sceptical examiner…"
+  - id: openai_innovation
     provider: openai
-    model: gpt-4o
+    model: gpt-5.2-2025-12-11
     perspective: innovation
     focus_criteria: [A2, A1]
     # …
 
 # Pipeline behaviour
 pipeline:
-  iterations: 2
+  iterations: 3
   stop_on_accept: true
 
 # Scopus literature search
 scopus:
   enabled: true
-  max_results: 40
+  max_results: 100
   year_from: 2019
 
 # Output formats
@@ -87,9 +87,9 @@ output:
 
 | Provider | config.yaml value | Model examples | `.env` key needed |
 |----------|-------------------|----------------|-------------------|
-| Anthropic | `anthropic` | `claude-sonnet-4-5-20250929`, `claude-opus-4-5-20250918` | `ANTHROPIC_API_KEY` |
-| OpenAI | `openai` | `gpt-4o`, `gpt-4o-mini` | `OPENAI_API_KEY` |
-| Google | `google` | `gemini-2.5-flash`, `gemini-2.5-pro` | `GOOGLE_API_KEY` |
+| Anthropic | `anthropic` | `claude-opus-4-6`, `claude-sonnet-4-6`, `claude-haiku-4-5-20251001` | `ANTHROPIC_API_KEY` |
+| OpenAI | `openai` | `gpt-5.2-2025-12-11`, `gpt-5.2-pro-2025-12-11`, `gpt-5-mini-2025-08-07` | `OPENAI_API_KEY` |
+| Google | `google` | `gemini-3.1-pro-preview`, `gemini-2.5-flash`, `gemini-3-flash-preview` | `GOOGLE_API_KEY` |
 | HuggingFace | `huggingface` | `meta-llama/Llama-3.1-70B-Instruct` | `HUGGINGFACE_API_KEY` |
 
 You only need API keys for the providers you actually enable.
@@ -118,7 +118,7 @@ fct-engine config --show
 │       │                     ▼                          │
 │       ├──▶ ReviewPanel (cfg.review_panel[])            │
 │       │         ├─ claude_rigor   (Anthropic)          │
-│       │         ├─ gpt4o_innovation (OpenAI)           │
+│       │         ├─ openai_innovation (OpenAI)           │
 │       │         ├─ gemini_feasibility (Google)         │
 │       │         └─ llama_domain   (HuggingFace)        │
 │       │                     │                          │

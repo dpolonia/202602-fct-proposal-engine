@@ -86,13 +86,13 @@ review_panel:
     perspective: "scientific_rigor"
     focus_criteria: ["A1", "B1"]
     persona: >
-    Professor Maria Santos is a senior methodologist and programme evaluator with long experience in European national
-    funding panels and a publication record in research design, evaluation theory, and mixed-methods. She reviews like a
-    sceptical examiner: every strong claim must map to a testable hypothesis, a defensible identification strategy, valid
-    measurement, and bias control. She expects a clear logic model (inputs→activities→outputs→outcomes→impact), explicit
-    unit of analysis, justified sampling/coverage, and a threats-to-validity table. She penalises method shopping,
-    feasibility theatre, and non-falsifiable objectives; she rewards reproducibility plans (data/code), transparent
-    uncertainty, and concrete risk mitigation with triggers and owners.
+      Professor Maria Santos is a senior methodologist and programme evaluator with long experience in European national
+      funding panels and a publication record in research design, evaluation theory, and mixed-methods. She reviews like a
+      sceptical examiner: every strong claim must map to a testable hypothesis, a defensible identification strategy, valid
+      measurement, and bias control. She expects a clear logic model (inputs→activities→outputs→outcomes→impact), explicit
+      unit of analysis, justified sampling/coverage, and a threats-to-validity table. She penalises method shopping,
+      feasibility theatre, and non-falsifiable objectives; she rewards reproducibility plans (data/code), transparent
+      uncertainty, and concrete risk mitigation with triggers and owners.
 
 
   - id: "openai_innovation"

@@ -46,7 +46,7 @@ Each role accepts:
 llm:
   generator:
     provider: "anthropic"                    # anthropic | openai | google | huggingface
-    model: "claude-sonnet-4-5-20250929"      # any model string valid for that provider
+    model: "claude-opus-4-6"                 # any model string valid for that provider
     temperature: 0.3                         # 0.0–1.0
 ```
 
@@ -63,7 +63,7 @@ review_panel:
   - id: "my_reviewer"         # unique identifier (used in logs & output)
     enabled: true              # set false to skip without deleting
     provider: "openai"         # LLM provider
-    model: "gpt-4o"            # model string
+    model: "gpt-5.2-2025-12-11"  # model string
     perspective: "innovation"  # label for the review focus
     focus_criteria: ["A2"]     # which FCT criteria this reviewer emphasises
     persona: >                 # system prompt persona (optional)
@@ -88,7 +88,7 @@ review_panel:
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| `iterations` | int | `2` | Number of generate → review → revise cycles. |
+| `iterations` | int | `3` | Number of generate → review → revise cycles. |
 | `stop_on_accept` | bool | `true` | Stop early if the panel decision is `"accept"`. |
 | `max_concurrent_reviews` | int | `4` | Max parallel reviewer calls (limited by rate limits). |
 | `save_intermediates` | bool | `true` | Keep `v0_proposal.json`, `v0_review.json`, etc. |
@@ -100,10 +100,10 @@ review_panel:
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | `enabled` | bool | `true` | Set `false` to skip Scopus entirely (useful offline or without a key). |
-| `max_results` | int | `40` | Total articles to retrieve across all queries. |
+| `max_results` | int | `100` | Total articles to retrieve across all queries. |
 | `year_from` | int | `2019` | Oldest publication year to include. |
 | `enrich_abstracts` | bool | `true` | Fetch full abstracts for top-cited articles. |
-| `top_abstracts` | int | `15` | How many top articles to enrich with abstracts. |
+| `top_abstracts` | int | `30` | How many top articles to enrich with abstracts. |
 
 Requires `SCOPUS_API_KEY` in `.env`. If the key is missing and `enabled: true`, the scraper silently skips.
 
