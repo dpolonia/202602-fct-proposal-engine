@@ -44,6 +44,12 @@ dist/
 # Node (if any)
 node_modules/
 
+# --- Gemini CLI local state ---
+.gemini/
+
+# --- Audit reports (local only) ---
+audit_report.md
+
 # Local patch/bundle artifacts
 *.patch
 *.bundle

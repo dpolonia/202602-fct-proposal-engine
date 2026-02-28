@@ -230,6 +230,34 @@ When asked to enhance a module:
 
 ---
 
+## Automated Audit Integration
+
+The `scripts/gemini_review.sh` script invokes you programmatically. When called:
+
+1. You receive a prompt built from the Review Mandate in this file
+2. The scope is either changed files (default), full codebase, or security-focused
+3. Your output is saved to `audit_report.md`
+4. A marker in `.gemini/last_review_commit` tracks which commit was last reviewed
+
+### Modes
+
+| Flag | Scope | When to use |
+|------|-------|-------------|
+| (default) | Files changed since last review | After Claude Code commits |
+| `--full` | All Python, config, docs | Periodic comprehensive audit |
+| `--security` | All Python + scripts, security-weighted | Before releases or after sensitive changes |
+| `--pre-push` | Full scope, fails on multiple blockers | Before every `git push` |
+
+### Report Format
+
+Always use the structured format requested in the prompt:
+- Executive Summary with 🔴/🟡/🟢 counts
+- File-by-file findings with line numbers
+- Security-specific section
+- Fix roadmap for Claude Code
+
+---
+
 ## Quick Commands
 
 ```bash

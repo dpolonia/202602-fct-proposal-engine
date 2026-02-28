@@ -162,19 +162,33 @@ bash scripts/security_check.sh --all
 | 6 | **Output & Data** | PII in YAML files | output/ or logs/ not in .gitignore |
 | 7 | **Network & API** | verify=False | Plain HTTP, missing timeouts |
 
-### Workflow: Claude Code → Security Gate → Commit → Gemini Review
+### Workflow: Claude Code → Security Gate → Commit → Full Gate → Push
 
 ```
 1. Claude Code implements a change
 2. Claude Code runs: bash scripts/security_check.sh
 3. If 🔴 BLOCKERS → Claude Code fixes them, go to step 2
 4. If clean → git add + git commit (hook re-validates)
-5. git push → Gemini CLI audits via GEMINI.md Review Mandate
+5. Before push, run: bash scripts/full_gate.sh
+   (security re-check + Gemini code/security audit)
 6. If Gemini finds blockers → Claude Code fixes, go to step 2
+7. If clean → git push
 ```
 
 Claude Code must NEVER skip step 2. If asked to commit without running the
 security check, refuse and run the check first.
+
+### Gemini Audit Commands
+
+| What you want | Command |
+|--------------|---------|
+| Review recent changes | `bash scripts/gemini_review.sh` |
+| Full codebase audit | `bash scripts/gemini_review.sh --full` |
+| Security-focused audit | `bash scripts/gemini_review.sh --security` |
+| Pre-push gate (both) | `bash scripts/full_gate.sh` |
+
+The audit report is saved to `audit_report.md` (gitignored — local only).
+Each new audit prepends to the existing report, creating a running history.
 
 ## Personal Content Policy
 
