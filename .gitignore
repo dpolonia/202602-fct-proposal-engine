@@ -38,3 +38,7 @@ dist/
 
 # Node (if any)
 node_modules/
+
+# Local patch/bundle artifacts
+*.patch
+*.bundle
