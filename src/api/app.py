@@ -16,7 +16,7 @@ from pydantic import BaseModel
 
 from src.config.fct_constants import CALL_DATES, CHAR_LIMITS, EVAL_CRITERIA, TYPOLOGY_RULES
 from src.config.settings import cfg, secrets
-from src.generators.models import ConsensusReport, DraftIdea, Proposal
+from src.generators.models import DraftIdea, Proposal
 
 logger = logging.getLogger(__name__)
 

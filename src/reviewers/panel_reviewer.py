@@ -10,8 +10,8 @@ import asyncio
 import json
 import logging
 
-from src.config.fct_constants import CHAR_LIMITS, EVAL_CRITERIA
-from src.config.settings import LLMProvider, ReviewerDef, cfg
+from src.config.fct_constants import CHAR_LIMITS
+from src.config.settings import ReviewerDef, cfg
 from src.generators.models import (
     ConsensusReport, CriterionScore, Proposal, ReviewReport,
 )
