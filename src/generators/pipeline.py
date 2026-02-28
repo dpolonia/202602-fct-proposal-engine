@@ -41,43 +41,55 @@ class Pipeline:
 
         history: list[dict] = []
         consensus: ConsensusReport | None = None
+        proposal: Proposal | None = None
 
-        # --- Generate ---
-        logger.info("=" * 60)
-        logger.info("STEP 1: Generating initial proposal…")
-        logger.info("=" * 60)
-        proposal = await self.generator.generate(draft)
-        if cfg.save_intermediates:
-            self._save(proposal, out / "v0_proposal.json")
-
-        for it in range(iters):
+        try:
+            # --- Generate ---
             logger.info("=" * 60)
-            logger.info(f"ITERATION {it + 1}/{iters}")
+            logger.info("STEP 1: Generating initial proposal…")
             logger.info("=" * 60)
-
-            # --- Review ---
-            consensus = await self.panel.review(proposal)
+            proposal = await self.generator.generate(draft)
             if cfg.save_intermediates:
-                self._save_review(consensus, out / f"v{it}_review.json")
+                self._save(proposal, out / "v0_proposal.json")
 
-            history.append({
-                "iteration": it,
-                "score": consensus.consensus_score,
-                "decision": consensus.panel_decision,
-                "weighted_scores": consensus.weighted_scores,
-            })
-            logger.info(f"  Score: {consensus.consensus_score}/10  Decision: {consensus.panel_decision}")
+            for it in range(iters):
+                logger.info("=" * 60)
+                logger.info(f"ITERATION {it + 1}/{iters}")
+                logger.info("=" * 60)
 
-            # --- Early stop ---
-            if cfg.stop_on_accept and consensus.panel_decision == "accept":
-                logger.info("Panel accepted — stopping early.")
-                break
-
-            # --- Revise ---
-            if it < iters - 1 or consensus.panel_decision in ("major_revision", "reject"):
-                proposal = await self.reviser.revise(proposal, consensus)
+                # --- Review ---
+                consensus = await self.panel.review(proposal)
                 if cfg.save_intermediates:
-                    self._save(proposal, out / f"v{it + 1}_proposal.json")
+                    self._save_review(consensus, out / f"v{it}_review.json")
+
+                history.append({
+                    "iteration": it,
+                    "score": consensus.consensus_score,
+                    "decision": consensus.panel_decision,
+                    "weighted_scores": consensus.weighted_scores,
+                })
+                logger.info(
+                    f"  Score: {consensus.consensus_score}/10  Decision: {consensus.panel_decision}"
+                )
+
+                # --- Early stop ---
+                if cfg.stop_on_accept and consensus.panel_decision == "accept":
+                    logger.info("Panel accepted — stopping early.")
+                    break
+
+                # --- Revise ---
+                if it < iters - 1 or consensus.panel_decision in ("major_revision", "reject"):
+                    proposal = await self.reviser.revise(proposal, consensus)
+                    if cfg.save_intermediates:
+                        self._save(proposal, out / f"v{it + 1}_proposal.json")
+
+        except Exception:
+            logger.exception("Pipeline failed — saving intermediate state")
+            if proposal is not None:
+                self._save(proposal, out / "partial_proposal.json")
+            if consensus is not None:
+                self._save_review(consensus, out / "partial_review.json")
+            raise
 
         # --- Final outputs ---
         if cfg.out_json:
