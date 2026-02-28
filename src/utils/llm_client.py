@@ -10,7 +10,12 @@ import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
-from tenacity import retry, stop_after_attempt, wait_exponential
+from tenacity import (
+    retry,
+    retry_if_exception_type,
+    stop_after_attempt,
+    wait_exponential,
+)
 
 from src.config.settings import LLMProvider, LLMRole, cfg, secrets
 
@@ -91,6 +96,10 @@ class OpenAIClient(BaseLLMClient):
         )
 
 
+class _GeminiRetryableError(Exception):
+    """Wrapper for Gemini errors that are safe to retry."""
+
+
 class GoogleClient(BaseLLMClient):
     provider = LLMProvider.GOOGLE
 
@@ -99,21 +108,60 @@ class GoogleClient(BaseLLMClient):
         self.client = genai.Client(api_key=secrets.google_api_key)
         self.model = model
 
-    @retry(stop=stop_after_attempt(3), wait=wait_exponential(min=2, max=30))
+    @retry(
+        retry=retry_if_exception_type(_GeminiRetryableError),
+        stop=stop_after_attempt(4),
+        wait=wait_exponential(min=2, max=60),
+        before_sleep=lambda rs: logger.warning(
+            f"Gemini retry {rs.attempt_number}/4 after: {rs.outcome.exception()}"
+        ),
+    )
     async def generate(self, prompt, system="", max_tokens=4096, temperature=0.3):
         from google.genai import types
+
         config = types.GenerateContentConfig(
             system_instruction=system or "You are an expert academic research proposal writer.",
             max_output_tokens=max_tokens, temperature=temperature,
         )
-        loop = asyncio.get_event_loop()
-        resp = await loop.run_in_executor(
-            None, lambda: self.client.models.generate_content(
-                model=self.model, contents=prompt, config=config,
-            ),
-        )
+        try:
+            loop = asyncio.get_event_loop()
+            resp = await loop.run_in_executor(
+                None, lambda: self.client.models.generate_content(
+                    model=self.model, contents=prompt, config=config,
+                ),
+            )
+        except Exception as exc:
+            exc_name = type(exc).__name__
+            exc_str = str(exc).lower()
+            # Rate-limit, quota, and transient server errors are retryable
+            if any(k in exc_str for k in ("429", "rate", "quota", "resource_exhausted",
+                                           "500", "503", "unavailable", "deadline")):
+                raise _GeminiRetryableError(f"{exc_name}: {exc}") from exc
+            # Auth, invalid request, and permission errors are not
+            logger.error(f"Gemini non-retryable error ({exc_name}): {exc}")
+            raise
+
+        # Handle safety-blocked or empty responses
+        if not resp.candidates:
+            reason = getattr(resp, "prompt_feedback", None)
+            raise ValueError(
+                f"Gemini returned no candidates. Prompt feedback: {reason}"
+            )
+
+        candidate = resp.candidates[0]
+        finish = getattr(candidate, "finish_reason", None)
+        if finish and str(finish) == "SAFETY":
+            blocked = getattr(candidate, "safety_ratings", [])
+            raise ValueError(
+                f"Gemini blocked response (SAFETY). Ratings: {blocked}"
+            )
+
+        text = resp.text or ""
+        if not text.strip():
+            logger.warning("Gemini returned empty text; using empty string")
+
         return LLMResponse(
-            text=resp.text or "", model=self.model, provider=self.provider,
+            text=text, model=self.model, provider=self.provider,
             input_tokens=getattr(resp.usage_metadata, "prompt_token_count", 0) if resp.usage_metadata else 0,
             output_tokens=getattr(resp.usage_metadata, "candidates_token_count", 0) if resp.usage_metadata else 0,
         )
