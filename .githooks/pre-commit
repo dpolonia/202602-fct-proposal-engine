@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# =============================================================================
+# .githooks/pre-commit — Runs security_check.sh on staged files
+#
+# Install: git config core.hooksPath .githooks
+# =============================================================================
+
+echo ""
+echo "Running pre-commit security assessment..."
+echo ""
+
+bash scripts/security_check.sh
+
+# Exit code propagates: non-zero blocks the commit

@@ -125,3 +125,53 @@ pytest tests/ -v -k "not skipif"     # integration (needs keys)
 - Type hints everywhere
 - Ruff (line-length=100)
 - config.yaml for preferences, .env for secrets — never the reverse
+
+## Security Gate (MANDATORY before every commit)
+
+**Claude Code must run the security assessment before every `git commit`.**
+
+### Automatic (pre-commit hook)
+
+```bash
+# One-time setup — enables the hook
+git config core.hooksPath .githooks
+```
+
+After this, `git commit` automatically runs `scripts/security_check.sh` on staged
+files. If any 🔴 BLOCKER is found, the commit is rejected.
+
+### Manual (when working interactively)
+
+```bash
+# Check staged files only
+bash scripts/security_check.sh
+
+# Full repo audit
+bash scripts/security_check.sh --all
+```
+
+### What it checks (7 categories)
+
+| # | Category | Blockers on | Warns on |
+|---|----------|-------------|----------|
+| 1 | **Secrets & Credentials** | API keys in source, .env staged, .env not in .gitignore, hardcoded passwords | — |
+| 2 | **Secrets in Logs** | Secrets in log/print statements | Secrets in f-strings |
+| 3 | **Architecture** | — | Direct LLM client instantiation, hardcoded model names, direct os.environ for secrets |
+| 4 | **Input Validation** | Unsafe yaml.load, eval/exec | shell=True, path concatenation |
+| 5 | **Dependencies** | — | Unpinned deps |
+| 6 | **Output & Data** | PII in YAML files | output/ or logs/ not in .gitignore |
+| 7 | **Network & API** | verify=False | Plain HTTP, missing timeouts |
+
+### Workflow: Claude Code → Security Gate → Commit → Gemini Review
+
+```
+1. Claude Code implements a change
+2. Claude Code runs: bash scripts/security_check.sh
+3. If 🔴 BLOCKERS → Claude Code fixes them, go to step 2
+4. If clean → git add + git commit (hook re-validates)
+5. git push → Gemini CLI audits via GEMINI.md Review Mandate
+6. If Gemini finds blockers → Claude Code fixes, go to step 2
+```
+
+Claude Code must NEVER skip step 2. If asked to commit without running the
+security check, refuse and run the check first.
