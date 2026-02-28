@@ -6,7 +6,7 @@ Regulamento 5/2024, Guide for Peer Reviewers, and UA Internal Rules.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 
 
