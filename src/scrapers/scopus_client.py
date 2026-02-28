@@ -50,7 +50,14 @@ class ScopusScraper:
     def is_available(self) -> bool:
         return cfg.scopus_enabled and bool(self.api_key)
 
-    @retry(stop=stop_after_attempt(3), wait=wait_exponential(min=1, max=15))
+    @retry(
+        retry=retry_if_exception_type((httpx.TimeoutException, httpx.NetworkError)),
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(min=1, max=15),
+        before_sleep=lambda rs: logger.warning(
+            f"Scopus search retry {rs.attempt_number}/3 after: {rs.outcome.exception()}"
+        ),
+    )
     async def search(self, query: str, max_results: int = 50, sort: str = "-citedby-count",
                      year_from: int | None = None, subject_area: str | None = None) -> list[ScopusArticle]:
         params: dict = {
@@ -69,7 +76,12 @@ class ScopusScraper:
             while len(articles) < max_results:
                 params["start"] = start
                 resp = await client.get(SCOPUS_SEARCH_URL, headers=self.headers, params=params)
-                resp.raise_for_status()
+                if resp.status_code in (429, 500, 502, 503, 504):
+                    logger.warning(f"Scopus search: transient HTTP {resp.status_code}")
+                    raise httpx.NetworkError(f"HTTP {resp.status_code}")
+                if resp.status_code != 200:
+                    logger.warning(f"Scopus search: HTTP {resp.status_code} (not retryable)")
+                    break
                 data = resp.json()
                 results = data.get("search-results", {}).get("entry", [])
                 if not results or results[0].get("error"):
