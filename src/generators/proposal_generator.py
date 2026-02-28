@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 
 from src.config.fct_constants import CHAR_LIMITS, TYPOLOGY_RULES, ProjectType
 from src.config.settings import cfg
@@ -95,6 +96,22 @@ class ProposalGenerator:
 
     # --- helpers ---------------------------------------------------------------
 
+    @staticmethod
+    def _extract_json(text: str) -> str:
+        """Extract JSON from LLM output, stripping markdown fences and surrounding text."""
+        clean = text.strip()
+        # Try to extract fenced JSON block
+        m = re.search(r"```(?:json)?\s*\n?(.*?)```", clean, re.DOTALL)
+        if m:
+            return m.group(1).strip()
+        # Fallback: find first [ or { and match to the last ] or }
+        for start_char, end_char in [("[", "]"), ("{", "}")]:
+            start = clean.find(start_char)
+            end = clean.rfind(end_char)
+            if start != -1 and end > start:
+                return clean[start:end + 1]
+        return clean
+
     async def _gen(self, section, draft, lit, proposal, limit):
         prompt = self._prompt(section, draft, lit, proposal, limit)
         system = get_prompt("system", "generator")
@@ -126,7 +143,7 @@ Rules: cover entire duration, no gaps; each task needs deliverables; max {CHAR_L
 Return JSON array: number, denomination, description, expected_results, person_months, start_month, duration_months, cost_justification. JSON ONLY."""
         resp = await self.llm.generate_json(prompt, max_tokens=8000)
         try:
-            data = json.loads(resp.text.strip().removeprefix("```json").removesuffix("```"))
+            data = json.loads(self._extract_json(resp.text))
             return [ProposalTask(
                 number=t.get("number", i+1),
                 denomination=t.get("denomination", f"Task {i+1}")[:150],
@@ -148,7 +165,7 @@ Return JSON array: number, denomination, description, expected_results, person_m
 Return JSON array: code, title, type, description (≤{CHAR_LIMITS.deliverable_description} chars), related_tasks, due_month. JSON ONLY."""
         resp = await self.llm.generate_json(prompt, max_tokens=4000)
         try:
-            data = json.loads(resp.text.strip().removeprefix("```json").removesuffix("```"))
+            data = json.loads(self._extract_json(resp.text))
             return [Deliverable(code=d.get("code", f"D{i+1}"), title=d.get("title", ""),
                                 description=d.get("description", "")[:CHAR_LIMITS.deliverable_description],
                                 related_tasks=d.get("related_tasks", []), due_month=d.get("due_month", 0))
@@ -162,7 +179,7 @@ Return JSON array: code, title, type, description (≤{CHAR_LIMITS.deliverable_d
 Return JSON array: code, denomination, description (≤{CHAR_LIMITS.milestone_description} chars), related_tasks, due_month. JSON ONLY."""
         resp = await self.llm.generate_json(prompt, max_tokens=2000)
         try:
-            data = json.loads(resp.text.strip().removeprefix("```json").removesuffix("```"))
+            data = json.loads(self._extract_json(resp.text))
             return [Milestone(code=m.get("code", f"M{i+1}"), denomination=m.get("denomination", ""),
                               description=m.get("description", "")[:CHAR_LIMITS.milestone_description],
                               related_tasks=m.get("related_tasks", []), due_month=m.get("due_month", 0))
