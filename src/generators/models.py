@@ -222,7 +222,7 @@ class CriterionScore(BaseModel):
 
 class ReviewReport(BaseModel):
     """Single reviewer's assessment."""
-    reviewer_id: str  # e.g., "claude_rigor", "gpt4o_innovation"
+    reviewer_id: str  # e.g., "claude_rigor", "openai_innovation"
     reviewer_model: str
     reviewer_provider: str
     perspective: str  # "scientific_rigor", "innovation", "feasibility", "domain_expert"

@@ -20,7 +20,7 @@ from src.config.settings import cfg, secrets
 
 # LLM settings
 cfg.generator.provider   # "anthropic"
-cfg.generator.model      # "claude-sonnet-4-5-20250929"
+cfg.generator.model      # "claude-opus-4-6"
 cfg.consensus.provider   # can differ from generator
 cfg.revision.temperature # 0.3
 

@@ -86,7 +86,7 @@ class LLMRole:
     def __init__(self, data: dict | None = None):
         data = data or {}
         self.provider: LLMProvider = LLMProvider(data.get("provider", "anthropic"))
-        self.model: str = data.get("model", "claude-sonnet-4-5-20250929")
+        self.model: str = data.get("model", "claude-opus-4-6")
         self.temperature: float = data.get("temperature", 0.3)
 
 
@@ -97,7 +97,7 @@ class ReviewerDef:
         self.id: str = data.get("id", "unnamed")
         self.enabled: bool = data.get("enabled", True)
         self.provider: LLMProvider = LLMProvider(data.get("provider", "anthropic"))
-        self.model: str = data.get("model", "claude-sonnet-4-5-20250929")
+        self.model: str = data.get("model", "claude-opus-4-6")
         self.perspective: str = data.get("perspective", "general")
         self.focus_criteria: list[str] = data.get("focus_criteria", [])
         self.persona: str = data.get("persona", "").strip()
