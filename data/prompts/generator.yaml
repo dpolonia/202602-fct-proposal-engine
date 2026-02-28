@@ -1,0 +1,69 @@
+# =============================================================================
+# Prompt templates for ProposalGenerator.
+# Variables use Python str.format() placeholders: {variable_name}
+# =============================================================================
+
+# Base section prompt — used for all proposal sections
+section_base: |
+  Write the '{section}' section of an FCT PTDC 2025 proposal.
+  PROJECT: {title} | TYPOLOGY: {typology}
+  TOPIC: {topic}
+  RQs: {research_questions}
+  CHAR LIMIT: {limit} (STRICT). Plain text only, English.
+
+# Section-specific additions (appended to section_base)
+section_extras:
+  state_of_art_objectives: >
+    Focus on Criterion A (40%): identify the knowledge gap, articulate
+    originality. Do NOT describe methodology.
+  research_plan_methods: >
+    Detail methodology. SotA excerpt: {sota_excerpt}
+  abstract_pt: >
+    Translate to Portuguese. EN abstract: {abstract_en}
+  institution_description: >
+    Describe {principal_contractor}. Units: {research_units}
+  career_profile: >
+    PI summary: {pi_career_summary}
+  management_structure: >
+    Tasks: {tasks_list}
+
+# Trim prompt — used when generated text exceeds character limit
+trim: |
+  Condense this '{section}' section to <={limit} chars, keeping key arguments.
+
+  {text}
+
+# Task generation prompt
+tasks: |
+  Generate tasks for this FCT proposal.
+  TOPIC: {topic}
+  RQs: {research_questions}
+  DURATION: {duration} months | TYPOLOGY: {typology}
+  SotA excerpt: {sota_excerpt}
+  Plan excerpt: {plan_excerpt}
+  METHOD NOTES: {method_notes}
+
+  Rules: cover entire duration, no gaps; each task needs deliverables;
+  max {task_desc_limit} chars description, max {cost_just_limit} chars cost justification.
+  Return JSON array: number, denomination, description, expected_results,
+  person_months, start_month, duration_months, cost_justification. JSON ONLY.
+
+# Deliverables generation prompt
+deliverables: |
+  Generate deliverables for tasks:
+  {tasks_summary}
+  Return JSON array: code, title, type, description (<={deliv_desc_limit} chars),
+  related_tasks, due_month. JSON ONLY.
+
+# Milestones generation prompt
+milestones: |
+  Generate 4-6 milestones.
+  Tasks:
+  {tasks_summary}
+  Duration: {duration} mo.
+  Return JSON array: code, denomination, description (<={milestone_desc_limit} chars),
+  related_tasks, due_month. JSON ONLY.
+
+# JSON formatting instruction (appended by generate_json)
+json_instruction: >
+  Respond ONLY with valid JSON. No markdown, no backticks.

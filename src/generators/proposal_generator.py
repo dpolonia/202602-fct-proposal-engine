@@ -15,6 +15,7 @@ from src.generators.models import (
 )
 from src.scrapers.scopus_client import ScopusScraper
 from src.utils.llm_client import BaseLLMClient, get_llm_for_role
+from src.utils.prompt_loader import get_prompt
 
 logger = logging.getLogger(__name__)
 
@@ -96,8 +97,7 @@ class ProposalGenerator:
 
     async def _gen(self, section, draft, lit, proposal, limit):
         prompt = self._prompt(section, draft, lit, proposal, limit)
-        system = ("You are an expert academic proposal writer for competitive R&D funding. "
-                  "Write precisely within character limits, in plain text, no markdown.")
+        system = get_prompt("system", "generator")
         resp = await self.llm.generate(prompt, system=system, max_tokens=limit * 2,
                                         temperature=cfg.generator.temperature)
         text = resp.text.strip()

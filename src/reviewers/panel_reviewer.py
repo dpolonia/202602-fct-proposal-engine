@@ -16,6 +16,7 @@ from src.generators.models import (
     ConsensusReport, CriterionScore, Proposal, ReviewReport,
 )
 from src.utils.llm_client import BaseLLMClient, get_llm_client, get_llm_for_role
+from src.utils.prompt_loader import get_prompt
 
 logger = logging.getLogger(__name__)
 
@@ -50,14 +51,11 @@ class AIReviewer:
             return None
 
     def _build_system(self) -> str:
-        persona = self.defn.persona or (
-            f"You are an international peer reviewer specialising in {self.defn.perspective}."
-        )
-        return (
-            f"{persona}\n\n"
-            "You evaluate FCT PTDC 2025 proposals. Be specific, cite exact proposal sections, "
-            "identify both strengths and weaknesses, and give actionable suggestions."
-        )
+        persona = self.defn.persona or get_prompt(
+            "system", "reviewer_fallback"
+        ).format(perspective=self.defn.perspective)
+        instructions = get_prompt("system", "reviewer_instructions")
+        return f"{persona}\n\n{instructions}"
 
     def _build_prompt(self, p: Proposal) -> str:
         tasks_txt = "\n".join(

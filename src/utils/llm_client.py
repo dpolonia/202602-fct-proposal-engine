@@ -17,6 +17,7 @@ from tenacity import (
 )
 
 from src.config.settings import LLMProvider, LLMRole, cfg, secrets
+from src.utils.prompt_loader import get_prompt
 
 logger = logging.getLogger(__name__)
 
@@ -39,8 +40,9 @@ class BaseLLMClient(ABC):
                        temperature: float = 0.3) -> LLMResponse: ...
 
     async def generate_json(self, prompt: str, system: str = "", max_tokens: int = 4096) -> LLMResponse:
+        json_instruction = get_prompt("generator", "json_instruction")
         return await self.generate(
-            prompt + "\n\nRespond ONLY with valid JSON. No markdown, no backticks.",
+            prompt + "\n\n" + json_instruction,
             system=system, max_tokens=max_tokens, temperature=0.1,
         )
 
@@ -80,7 +82,7 @@ class AnthropicClient(BaseLLMClient):
         try:
             msg = await self.client.messages.create(
                 model=self.model, max_tokens=max_tokens, temperature=temperature,
-                system=system or "You are an expert academic research proposal writer.",
+                system=system or get_prompt("system", "default"),
                 messages=[{"role": "user", "content": prompt}],
             )
         except Exception as exc:
@@ -156,7 +158,7 @@ class GoogleClient(BaseLLMClient):
         from google.genai import types
 
         config = types.GenerateContentConfig(
-            system_instruction=system or "You are an expert academic research proposal writer.",
+            system_instruction=system or get_prompt("system", "default"),
             max_output_tokens=max_tokens, temperature=temperature,
         )
         try:
