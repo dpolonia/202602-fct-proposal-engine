@@ -46,3 +46,8 @@ node_modules/
 # Local patch/bundle artifacts
 *.patch
 *.bundle
+
+# Local patch/bundle artifacts
+*.patch
+*.bundle
+*:Zone.Identifier
