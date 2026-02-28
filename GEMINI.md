@@ -59,7 +59,7 @@ src/reviewers/panel_reviewer.py   → Multi-LLM peer review panel + consensus
 src/api/app.py                    → FastAPI endpoints
 src/cli.py                        → Click CLI
 config.yaml                       → THE user config (edit this, never source)
-drafts/pdspp_pilot_pex.yaml       → Active draft idea
+drafts/example_idea.yaml          → Template draft idea (only tracked YAML)
 ```
 
 ---
@@ -225,6 +225,8 @@ When asked to enhance a module:
   regulatory.
 - **Do not run the pipeline against real APIs** in review mode. Use
   `--dry-run` or mock responses.
+- **Do not commit personal drafts** (`drafts/*.yaml` except `example_idea.yaml`)
+  or generated output to Git. These are local-only by policy.
 
 ---
 

@@ -175,3 +175,20 @@ bash scripts/security_check.sh --all
 
 Claude Code must NEVER skip step 2. If asked to commit without running the
 security check, refuse and run the check first.
+
+## Personal Content Policy
+
+**Personal proposal content is local-only and must NEVER be committed to Git.**
+
+| Folder/File | Tracked? | Contains |
+|-------------|:---:|---------|
+| `drafts/example_idea.yaml` | Yes | Template — always tracked |
+| `drafts/*.yaml` (all others) | No | User's personal research ideas |
+| `output/` | No | Generated proposals, reviews, scores |
+| `.env` | No | API keys and secrets |
+
+Claude Code must NEVER run `git add drafts/` without excluding personal files.
+Safe pattern: `git add drafts/example_idea.yaml drafts/README.md` (explicit files only).
+
+If asked to commit draft YAML files other than example_idea.yaml, REFUSE and
+explain that personal drafts are local-only per project policy.

@@ -864,18 +864,27 @@ Typically, 2–3 manual iterations produce a strong, submission-ready proposal.
 Version control means never losing a good draft. Think of it as "save points"
 in a video game — you can always go back to an earlier version.
 
+> **Warning — What gets saved to GitHub and what stays local:**
+>
+> Your personal draft YAML files (`drafts/my_idea.yaml`) and generated
+> output (`output/`) are **automatically excluded** from Git. They stay
+> on your computer only — your research ideas are never uploaded to GitHub.
+>
+> Git tracks only the engine code, configuration, and the example template.
+> This is by design: your intellectual property remains private.
+
 ### The three commands you need
 
 **Command 1 — Stage your changes** (tell Git which files to save):
 
 ```bash
-git add drafts/my_idea.yaml
+git add config.yaml
 ```
 
 **Command 2 — Commit** (save a snapshot with a description):
 
 ```bash
-git commit -m "First draft of my FCT25 proposal"
+git commit -m "Updated my engine settings"
 ```
 
 **Command 3 — Push** (upload to GitHub for safekeeping):
@@ -885,14 +894,8 @@ git push origin main
 ```
 
 That is it. Your work is now safely stored on GitHub. Every time you make
-meaningful changes to your draft, repeat these three commands with a new
-message:
-
-```bash
-git add drafts/my_idea.yaml
-git commit -m "Improved methodology section after reviewer feedback"
-git push origin main
-```
+meaningful changes to your settings, repeat these three commands with a new
+message.
 
 > **💡 Tip:** Write commit messages that describe what you changed. This makes
 > it easy to find a specific version later. Good examples:
@@ -957,7 +960,7 @@ anything else.
 
 ### ✅ Progress Check
 
-- [ ] I committed my `my_idea.yaml` file
+- [ ] I committed my settings changes
 - [ ] I pushed my changes to GitHub
 
 ---
@@ -1018,7 +1021,7 @@ fct-engine pipeline -i drafts/my_idea.yaml --iterations 5
 | Generate without review | `fct-engine generate -i drafts/my_idea.yaml` |
 | Check your settings | `fct-engine config --show` |
 | Validate your YAML | `python3 -c "import yaml; yaml.safe_load(open('drafts/my_idea.yaml'))"` |
-| Save your progress | `git add drafts/ && git commit -m "message" && git push` |
+| Save your progress | `git add config.yaml && git commit -m "message" && git push` |
 | Update the engine | `git pull origin main` |
 
 ### Where to find more help
@@ -1066,7 +1069,7 @@ Use this master checklist to make sure you have completed every step:
 - [ ] Read reviewer feedback
 
 ### Saving My Work
-- [ ] Committed my changes with Git
+- [ ] Committed my settings changes with Git
 - [ ] Pushed to GitHub
 
 ### 🎉 You did it!

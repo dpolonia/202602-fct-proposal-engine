@@ -26,8 +26,13 @@ Thumbs.db
 *.key
 *.pem
 
-# Outputs / logs
+# --- Personal proposal content (local only, never pushed) ---
+drafts/*.yaml
+drafts/*.yml
+!drafts/example_idea.yaml
 output/
+
+# Outputs / logs
 logs/
 *.log
 
@@ -38,14 +43,6 @@ dist/
 
 # Node (if any)
 node_modules/
-
-# Local patch/bundle artifacts
-*.patch
-*.bundle
-
-# Local patch/bundle artifacts
-*.patch
-*.bundle
 
 # Local patch/bundle artifacts
 *.patch
