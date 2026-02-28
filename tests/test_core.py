@@ -6,6 +6,7 @@ import json
 import textwrap
 from pathlib import Path
 
+import jsonschema
 import pytest
 import yaml
 
@@ -141,6 +142,90 @@ class TestProposal:
 # =============================================================================
 # LLM Client factory (unit test — no API calls)
 # =============================================================================
+
+# =============================================================================
+# YAML Schema Validation (all drafts vs data/schemas/draft_idea.json)
+# =============================================================================
+
+SCHEMA_PATH = Path("data/schemas/draft_idea.json")
+DRAFTS_DIR = Path("drafts")
+
+
+@pytest.fixture(scope="module")
+def draft_schema():
+    return json.loads(SCHEMA_PATH.read_text())
+
+
+def _all_draft_yamls():
+    return sorted(DRAFTS_DIR.glob("*.yaml"))
+
+
+class TestDraftSchemaValidation:
+    """Validate every YAML draft against data/schemas/draft_idea.json."""
+
+    def test_schema_file_exists(self):
+        assert SCHEMA_PATH.exists(), f"Schema not found: {SCHEMA_PATH}"
+
+    def test_schema_is_valid_json_schema(self, draft_schema):
+        jsonschema.Draft7Validator.check_schema(draft_schema)
+
+    @pytest.mark.parametrize("yaml_path", _all_draft_yamls(), ids=lambda p: p.name)
+    def test_draft_validates(self, yaml_path, draft_schema):
+        data = yaml.safe_load(yaml_path.read_text())
+        jsonschema.validate(instance=data, schema=draft_schema)
+
+    @pytest.mark.parametrize("yaml_path", _all_draft_yamls(), ids=lambda p: p.name)
+    def test_required_fields_present(self, yaml_path):
+        data = yaml.safe_load(yaml_path.read_text())
+        assert "title" in data, f"{yaml_path.name}: missing 'title'"
+        assert "research_topic" in data, f"{yaml_path.name}: missing 'research_topic'"
+        assert len(data["research_topic"]) >= 50, (
+            f"{yaml_path.name}: research_topic too short ({len(data['research_topic'])} chars)"
+        )
+
+    @pytest.mark.parametrize("yaml_path", _all_draft_yamls(), ids=lambda p: p.name)
+    def test_typology_constraints(self, yaml_path):
+        data = yaml.safe_load(yaml_path.read_text())
+        typ = data.get("typology", "SR&TD")
+        budget = data.get("estimated_budget", 0)
+        duration = data.get("duration_months", 0)
+        if typ == "PEX":
+            assert budget <= 60_000, f"{yaml_path.name}: PEX budget {budget} > 60000"
+            assert duration <= 18, f"{yaml_path.name}: PEX duration {duration} > 18 months"
+        elif typ == "SR&TD":
+            assert budget <= 250_000, f"{yaml_path.name}: IC&DT budget {budget} > 250000"
+            assert duration <= 36, f"{yaml_path.name}: IC&DT duration {duration} > 36 months"
+
+    @pytest.mark.parametrize("yaml_path", _all_draft_yamls(), ids=lambda p: p.name)
+    def test_keywords_limit(self, yaml_path):
+        data = yaml.safe_load(yaml_path.read_text())
+        for key in ("keywords_en", "keywords_pt"):
+            kw = data.get(key, [])
+            assert len(kw) <= 4, f"{yaml_path.name}: {key} has {len(kw)} items (max 4)"
+
+    @pytest.mark.parametrize("yaml_path", _all_draft_yamls(), ids=lambda p: p.name)
+    def test_sdg_valid(self, yaml_path):
+        data = yaml.safe_load(yaml_path.read_text())
+        sdgs = data.get("sdg_alignment", [])
+        assert len(sdgs) <= 3, f"{yaml_path.name}: {len(sdgs)} SDGs (max 3)"
+        for s in sdgs:
+            assert 1 <= s <= 17, f"{yaml_path.name}: invalid SDG {s}"
+
+    def test_missing_title_fails(self, draft_schema):
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate(instance={"research_topic": "x" * 50}, schema=draft_schema)
+
+    def test_missing_research_topic_fails(self, draft_schema):
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate(instance={"title": "Test"}, schema=draft_schema)
+
+    def test_invalid_typology_fails(self, draft_schema):
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate(
+                instance={"title": "T", "research_topic": "x" * 50, "typology": "INVALID"},
+                schema=draft_schema,
+            )
+
 
 class TestLLMFactory:
     def test_unknown_provider_raises(self):
