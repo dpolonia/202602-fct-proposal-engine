@@ -1,0 +1,10 @@
+Synthesise {num_reviews} reviews into a panel consensus for "{title}".
+
+REVIEWS:
+{reviews_text}
+
+SCORES: {scores_json}
+CONSENSUS: {consensus_score}/10
+
+Write ~500 words: key strengths, critical weaknesses, top-5 priority revisions,
+panel recommendation. Plain text.

@@ -1,0 +1,3 @@
+Generate deliverables for tasks:
+{tasks_summary}
+Return JSON array: code, title, type, description (<={deliv_desc_limit} chars), related_tasks, due_month. JSON ONLY.

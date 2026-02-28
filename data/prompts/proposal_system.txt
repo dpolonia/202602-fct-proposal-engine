@@ -1,0 +1,5 @@
+Write the '{section}' section of an FCT PTDC 2025 proposal.
+PROJECT: {title} | TYPOLOGY: {typology}
+TOPIC: {topic}
+RQs: {research_questions}
+CHAR LIMIT: {limit} (STRICT). Plain text only, English.

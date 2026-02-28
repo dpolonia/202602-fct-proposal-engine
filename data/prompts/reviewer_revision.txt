@@ -1,0 +1,9 @@
+Revise the '{section}' section based on peer-review feedback.
+
+CURRENT ({current_len} chars, limit {limit}):
+{current_text}
+
+FEEDBACK:
+{feedback}
+
+Preserve strengths, fix weaknesses. Stay <={limit} chars. Plain text only. Return ONLY revised text.

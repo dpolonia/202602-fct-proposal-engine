@@ -16,7 +16,7 @@ from src.generators.models import (
     ConsensusReport, CriterionScore, Proposal, ReviewReport,
 )
 from src.utils.llm_client import BaseLLMClient, get_llm_client, get_llm_for_role
-from src.utils.prompt_loader import get_prompt
+from src.utils.prompt_loader import get_prompt, load_prompt_template
 
 logger = logging.getLogger(__name__)
 
@@ -66,59 +66,22 @@ class AIReviewer:
         deliverables_txt = "\n".join(
             f"  {d.code}: {d.title} (month {d.due_month})" for d in p.deliverables
         )
-        return f"""Evaluate this FCT PTDC 2025 proposal.
-
-=== PROPOSAL ===
-TITLE: {p.title_en}
-TYPOLOGY: {p.typology.value} | DURATION: {p.duration_months} mo | BUDGET: €{p.total_budget:,.0f}
-
---- ABSTRACT ---
-{p.abstract_en}
-
---- STATE OF THE ART & OBJECTIVES ---
-{p.state_of_art_objectives}
-
---- RESEARCH PLAN & METHODS ---
-{p.research_plan_methods}
-
---- TASKS ---
-{tasks_txt}
-
---- DELIVERABLES ---
-{deliverables_txt}
-
---- MANAGEMENT ---
-{p.management_structure}
-
---- PI CAREER PROFILE ---
-{p.career_profile[:2000]}
-
---- TEAM CV SYNOPSIS ---
-{p.team_cv_synopsis[:2000]}
-
---- ETHICS ---
-{p.ethics_justification}
-
-=== FCT EVALUATION CRITERIA ===
-A (40%): Scientific merit (A1, 50%) + Innovation (A2, 50%)
-B (30%): PI merit (B1, 60%) + Team (B2, 40%)
-C (30%): Feasibility, deliverables, budget adequacy
-
-Your focus: {', '.join(self.defn.focus_criteria)}
-
-Return JSON:
-{{
-  "overall_score": <1-10>,
-  "criterion_scores": [
-    {{"criterion": "A", "sub_criterion": "A1", "score": <1-10>,
-      "justification": "…", "strengths": ["…"], "weaknesses": ["…"], "suggestions": ["…"]}}
-  ],
-  "general_comments": "…",
-  "major_revisions": ["…"],
-  "minor_revisions": ["…"],
-  "decision": "accept|minor_revision|major_revision|reject"
-}}
-JSON ONLY."""
+        return load_prompt_template("reviewer_evaluation").format(
+            title=p.title_en,
+            typology=p.typology.value,
+            duration=p.duration_months,
+            budget=f"{p.total_budget:,.0f}",
+            abstract=p.abstract_en,
+            state_of_art=p.state_of_art_objectives,
+            research_plan=p.research_plan_methods,
+            tasks=tasks_txt,
+            deliverables=deliverables_txt,
+            management=p.management_structure,
+            career_profile=p.career_profile[:2000],
+            team_cv=p.team_cv_synopsis[:2000],
+            ethics=p.ethics_justification,
+            focus_criteria=", ".join(self.defn.focus_criteria),
+        )
 
     def _parse(self, text: str) -> ReviewReport:
         clean = text.strip()
@@ -219,18 +182,15 @@ class ReviewPanel:
             f"Major: {'; '.join(r.major_revisions[:3])}"
             for r in reviews
         )
+        consensus_prompt = load_prompt_template("reviewer_consensus").format(
+            num_reviews=len(reviews),
+            title=proposal.title_en,
+            reviews_text=reviews_txt,
+            scores_json=json.dumps(w, indent=2),
+            consensus_score=f"{score:.1f}",
+        )
         narrative_resp = await self.consensus_llm.generate(
-            f"""Synthesise {len(reviews)} reviews into a panel consensus for "{proposal.title_en}".
-
-REVIEWS:
-{reviews_txt}
-
-SCORES: {json.dumps(w, indent=2)}
-CONSENSUS: {score:.1f}/10
-
-Write ~500 words: key strengths, critical weaknesses, top-5 priority revisions,
-panel recommendation. Plain text.""",
-            max_tokens=3000, temperature=0.3,
+            consensus_prompt, max_tokens=3000, temperature=0.3,
         )
 
         decisions = [r.decision for r in reviews]
@@ -277,16 +237,15 @@ class RevisionEngine:
             if not feedback:
                 continue
 
+            revision_prompt = load_prompt_template("reviewer_revision").format(
+                section=section,
+                current_len=len(text),
+                limit=limit,
+                current_text=text,
+                feedback=feedback,
+            )
             resp = await self.llm.generate(
-                f"""Revise the '{section}' section based on peer-review feedback.
-
-CURRENT ({len(text)} chars, limit {limit}):
-{text}
-
-FEEDBACK:
-{feedback}
-
-Preserve strengths, fix weaknesses. Stay ≤{limit} chars. Plain text only. Return ONLY revised text.""",
+                revision_prompt,
                 max_tokens=limit * 2, temperature=cfg.revision.temperature,
             )
             new = resp.text.strip()

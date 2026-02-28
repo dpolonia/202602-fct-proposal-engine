@@ -1,0 +1,53 @@
+Evaluate this FCT PTDC 2025 proposal.
+
+=== PROPOSAL ===
+TITLE: {title}
+TYPOLOGY: {typology} | DURATION: {duration} mo | BUDGET: EUR{budget}
+
+--- ABSTRACT ---
+{abstract}
+
+--- STATE OF THE ART & OBJECTIVES ---
+{state_of_art}
+
+--- RESEARCH PLAN & METHODS ---
+{research_plan}
+
+--- TASKS ---
+{tasks}
+
+--- DELIVERABLES ---
+{deliverables}
+
+--- MANAGEMENT ---
+{management}
+
+--- PI CAREER PROFILE ---
+{career_profile}
+
+--- TEAM CV SYNOPSIS ---
+{team_cv}
+
+--- ETHICS ---
+{ethics}
+
+=== FCT EVALUATION CRITERIA ===
+A (40%): Scientific merit (A1, 50%) + Innovation (A2, 50%)
+B (30%): PI merit (B1, 60%) + Team (B2, 40%)
+C (30%): Feasibility, deliverables, budget adequacy
+
+Your focus: {focus_criteria}
+
+Return JSON:
+{{
+  "overall_score": <1-10>,
+  "criterion_scores": [
+    {{"criterion": "A", "sub_criterion": "A1", "score": <1-10>,
+      "justification": "...", "strengths": ["..."], "weaknesses": ["..."], "suggestions": ["..."]}}
+  ],
+  "general_comments": "...",
+  "major_revisions": ["..."],
+  "minor_revisions": ["..."],
+  "decision": "accept|minor_revision|major_revision|reject"
+}}
+JSON ONLY.

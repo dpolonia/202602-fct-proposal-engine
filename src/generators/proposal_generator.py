@@ -16,7 +16,7 @@ from src.generators.models import (
 )
 from src.scrapers.scopus_client import ScopusScraper
 from src.utils.llm_client import BaseLLMClient, get_llm_for_role
-from src.utils.prompt_loader import get_prompt
+from src.utils.prompt_loader import get_prompt, load_prompt_template
 
 logger = logging.getLogger(__name__)
 
@@ -131,16 +131,17 @@ class ProposalGenerator:
         return r[:limit] if len(r) > limit else r
 
     async def _gen_tasks(self, draft, proposal, duration):
-        prompt = f"""Generate tasks for this FCT proposal.
-TOPIC: {draft.research_topic[:500]}
-RQs: {'; '.join(draft.research_questions)}
-DURATION: {duration} months | TYPOLOGY: {draft.typology.value}
-SotA excerpt: {proposal.state_of_art_objectives[:1500]}
-Plan excerpt: {proposal.research_plan_methods[:2000]}
-METHOD NOTES: {draft.methodology_notes[:500]}
-
-Rules: cover entire duration, no gaps; each task needs deliverables; max {CHAR_LIMITS.task_description} chars description, max {CHAR_LIMITS.cost_justification} chars cost justification.
-Return JSON array: number, denomination, description, expected_results, person_months, start_month, duration_months, cost_justification. JSON ONLY."""
+        prompt = load_prompt_template("proposal_tasks").format(
+            topic=draft.research_topic[:500],
+            research_questions="; ".join(draft.research_questions),
+            duration=duration,
+            typology=draft.typology.value,
+            sota_excerpt=proposal.state_of_art_objectives[:1500],
+            plan_excerpt=proposal.research_plan_methods[:2000],
+            method_notes=draft.methodology_notes[:500],
+            task_desc_limit=CHAR_LIMITS.task_description,
+            cost_just_limit=CHAR_LIMITS.cost_justification,
+        )
         resp = await self.llm.generate_json(prompt, max_tokens=8000)
         try:
             data = json.loads(self._extract_json(resp.text))
@@ -161,8 +162,10 @@ Return JSON array: number, denomination, description, expected_results, person_m
     async def _gen_deliverables(self, proposal):
         summary = "\n".join(f"T{t.number}: {t.denomination} (m{t.start_month}–{t.start_month+t.duration_months-1})"
                             for t in proposal.tasks)
-        prompt = f"""Generate deliverables for tasks:\n{summary}
-Return JSON array: code, title, type, description (≤{CHAR_LIMITS.deliverable_description} chars), related_tasks, due_month. JSON ONLY."""
+        prompt = load_prompt_template("proposal_deliverables").format(
+            tasks_summary=summary,
+            deliv_desc_limit=CHAR_LIMITS.deliverable_description,
+        )
         resp = await self.llm.generate_json(prompt, max_tokens=4000)
         try:
             data = json.loads(self._extract_json(resp.text))
@@ -175,8 +178,11 @@ Return JSON array: code, title, type, description (≤{CHAR_LIMITS.deliverable_d
 
     async def _gen_milestones(self, proposal):
         summary = "\n".join(f"T{t.number}: {t.denomination}" for t in proposal.tasks)
-        prompt = f"""Generate 4–6 milestones.\nTasks:\n{summary}\nDuration: {proposal.duration_months} mo.
-Return JSON array: code, denomination, description (≤{CHAR_LIMITS.milestone_description} chars), related_tasks, due_month. JSON ONLY."""
+        prompt = load_prompt_template("proposal_milestones").format(
+            tasks_summary=summary,
+            duration=proposal.duration_months,
+            milestone_desc_limit=CHAR_LIMITS.milestone_description,
+        )
         resp = await self.llm.generate_json(prompt, max_tokens=2000)
         try:
             data = json.loads(self._extract_json(resp.text))
@@ -188,11 +194,14 @@ Return JSON array: code, denomination, description (≤{CHAR_LIMITS.milestone_de
             return []
 
     def _prompt(self, section, draft, lit, proposal, limit):
-        base = f"""Write the '{section}' section of an FCT PTDC 2025 proposal.
-PROJECT: {draft.title} | TYPOLOGY: {draft.typology.value}
-TOPIC: {draft.research_topic[:800]}
-RQs: {'; '.join(draft.research_questions)}
-CHAR LIMIT: {limit} (STRICT). Plain text only, English.\n"""
+        base = load_prompt_template("proposal_system").format(
+            section=section,
+            title=draft.title,
+            typology=draft.typology.value,
+            topic=draft.research_topic[:800],
+            research_questions="; ".join(draft.research_questions),
+            limit=limit,
+        )
         if lit:
             base += f"\n{lit}\n"
         extras = {

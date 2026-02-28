@@ -1,0 +1,10 @@
+Generate tasks for this FCT proposal.
+TOPIC: {topic}
+RQs: {research_questions}
+DURATION: {duration} months | TYPOLOGY: {typology}
+SotA excerpt: {sota_excerpt}
+Plan excerpt: {plan_excerpt}
+METHOD NOTES: {method_notes}
+
+Rules: cover entire duration, no gaps; each task needs deliverables; max {task_desc_limit} chars description, max {cost_just_limit} chars cost justification.
+Return JSON array: number, denomination, description, expected_results, person_months, start_month, duration_months, cost_justification. JSON ONLY.

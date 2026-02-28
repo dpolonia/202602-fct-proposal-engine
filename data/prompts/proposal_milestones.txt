@@ -1,0 +1,5 @@
+Generate 4-6 milestones.
+Tasks:
+{tasks_summary}
+Duration: {duration} mo.
+Return JSON array: code, denomination, description (<={milestone_desc_limit} chars), related_tasks, due_month. JSON ONLY.
