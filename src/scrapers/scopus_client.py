@@ -68,7 +68,8 @@ class ScopusScraper:
                      "prism:doi,citedby-count,authkeywords,dc:identifier,link",
         }
         if year_from:
-            params["date"] = f"{year_from}-"
+#            params["date"] = f"{year_from}-2099"
+            params["date"] = f"{year_from}-2099"
         if subject_area:
             params["subj"] = subject_area
 
@@ -130,13 +131,13 @@ class ScopusScraper:
         yf = year_from or cfg.scopus_year_from
 
         all_articles: dict[str, ScopusArticle] = {}
-        main_results = await self.search(f'TITLE-ABS-KEY("{topic}")', max_results=mr // 2, year_from=yf)
+        main_results = await self.search(' AND '.join(f'TITLE-ABS-KEY({w})' for w in topic.split()), max_results=mr // 2, year_from=yf)
         for a in main_results:
             all_articles[a.scopus_id] = a
 
         for kw in keywords[:4]:
             kw_results = await self.search(
-                f'TITLE-ABS-KEY("{kw}") AND TITLE-ABS-KEY("{topic.split()[0]}")',
+                ' AND '.join(f'TITLE-ABS-KEY({w})' for w in kw.split()) + f' AND TITLE-ABS-KEY({topic.split()[0]})',
                 max_results=10, year_from=yf,
             )
             for a in kw_results:
