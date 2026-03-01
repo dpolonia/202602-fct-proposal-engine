@@ -10,23 +10,25 @@ Usage anywhere in the codebase:
 from __future__ import annotations
 
 import os
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import yaml
 from pydantic_settings import BaseSettings, SettingsConfigDict
-
 
 # =============================================================================
 # 1. Secrets (.env)
 # =============================================================================
 
+
 class Secrets(BaseSettings):
     """API keys and credentials — loaded exclusively from .env"""
 
     model_config = SettingsConfigDict(
-        env_file=".env", env_file_encoding="utf-8", extra="ignore",
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
     )
 
     # LLM providers
@@ -48,7 +50,7 @@ class Secrets(BaseSettings):
 
     # Database (optional)
     database_url: str = "sqlite:///./data/proposals.db"
-    redis_url: Optional[str] = None
+    redis_url: str | None = None
 
     def has_key(self, provider: str) -> bool:
         """Check whether a usable key exists for a given provider."""
@@ -65,7 +67,8 @@ class Secrets(BaseSettings):
 # 2. User Config (config.yaml)
 # =============================================================================
 
-class LLMProvider(str, Enum):
+
+class LLMProvider(StrEnum):
     ANTHROPIC = "anthropic"
     OPENAI = "openai"
     GOOGLE = "google"
@@ -157,6 +160,15 @@ class UserConfig:
                 "timeline_ethics_gate",
             ],
         )
+
+        # --- Compliance ---
+        comp = raw.get("compliance", {})
+        self.compliance_enabled: bool = comp.get("enabled", True)
+        self.compliance_run_before_review: bool = comp.get("run_before_review", True)
+        self.compliance_run_after_revision: bool = comp.get("run_after_revision", True)
+        self.compliance_feed_to_review_iterate: bool = comp.get("feed_to_review_iterate", True)
+        self.compliance_disabled_rules: list[str] = comp.get("disabled_rules", [])
+        self.compliance_disabled_categories: list[str] = comp.get("disabled_categories", [])
 
         # --- Scopus ---
         sc = raw.get("scopus", {})

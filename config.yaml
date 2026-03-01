@@ -159,7 +159,7 @@ pipeline:
   # When enabled, replaces the simple RevisionEngine with a 6-step process:
   #   atomize critiques → grade → rank → apply fixes → consistency checks → report
   review_iterate:
-    enabled: false                 # Set true to activate structured revision
+    enabled: true                  # Set true to activate structured revision
     max_suggestions: 20            # Max suggestions extracted per iteration
     top_n: 5                       # Top-N by severity/impact to address per cycle
     include_trivial_fixes: true    # Also apply F0 (trivial) fixes beyond top-N
@@ -174,7 +174,22 @@ pipeline:
 
 
 # -----------------------------------------------------------------------------
-# 5. LITERATURE SEARCH (Scopus)
+# 5. COMPLIANCE VALIDATION
+# -----------------------------------------------------------------------------
+# Automated compliance checks against FCT regulations, UA internal rules,
+# and evaluation alignment criteria. Runs ~80 rules across 7 categories.
+
+compliance:
+  enabled: true                      # Master switch for compliance validation
+  run_before_review: true            # Validate after v1 generation, before review
+  run_after_revision: true           # Validate after each revision
+  feed_to_review_iterate: true       # Feed FAIL findings into review-iterate as suggestions
+  disabled_rules: []                 # Rule IDs to skip (e.g., ["UA01", "UA02"])
+  disabled_categories: []            # Category codes to skip (e.g., ["UA"])
+
+
+# -----------------------------------------------------------------------------
+# 6. LITERATURE SEARCH (Scopus)
 # -----------------------------------------------------------------------------
 
 scopus:
@@ -186,7 +201,7 @@ scopus:
 
 
 # -----------------------------------------------------------------------------
-# 6. OUTPUT
+# 7. OUTPUT
 # -----------------------------------------------------------------------------
 
 output:
@@ -201,7 +216,7 @@ output:
 
 
 # -----------------------------------------------------------------------------
-# 7. LOGGING
+# 8. LOGGING
 # -----------------------------------------------------------------------------
 
 logging:
@@ -210,7 +225,7 @@ logging:
 
 
 # -----------------------------------------------------------------------------
-# 8. GCP DEPLOYMENT (only needed for cloud hosting)
+# 9. GCP DEPLOYMENT (only needed for cloud hosting)
 # -----------------------------------------------------------------------------
 
 gcp:
