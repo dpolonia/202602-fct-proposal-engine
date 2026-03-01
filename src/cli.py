@@ -155,7 +155,7 @@ def pipeline(input_path, output_dir, iterations):
             t.add_column("B", justify="center"); t.add_column("C", justify="center")
             for h in result["history"]:
                 ws = h.get("weighted_scores", {})
-                t.add_row(str(h["iteration"] + 1), f"{h['score']:.1f}", h["decision"],
+                t.add_row(str(h["iteration"]), f"{h['score']:.1f}", h["decision"],
                           f"{ws.get('A', 0):.1f}", f"{ws.get('B', 0):.1f}", f"{ws.get('C', 0):.1f}")
             console.print(t)
 

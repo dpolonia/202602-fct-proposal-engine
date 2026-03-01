@@ -183,6 +183,8 @@ def mock_scopus():
 def draft_pex():
     """Load the PDSPP-Pilot PEX draft."""
     path = DRAFTS_DIR / "pdspp_pilot_pex.yaml"
+    if not path.exists():
+        pytest.skip(f"Personal draft not available: {path.name}")
     data = yaml.safe_load(path.read_text())
     return DraftIdea(**data)
 
@@ -302,23 +304,28 @@ class TestPipelineIntegration:
             mock_cfg.out_json = True
             mock_cfg.out_markdown = True
             mock_cfg.out_char_report = True
+            mock_cfg.out_docx = False
             mock_cfg.include_review_narrative = True
             mock_cfg.output_dir = str(tmp_path)
 
             result = await pipeline.run(draft_example, iterations=1, output_dir=tmp_path)
 
-        # Check output files were created
-        assert (tmp_path / "final_proposal.json").exists()
-        assert (tmp_path / "proposal_summary.md").exists()
-        assert (tmp_path / "char_report.json").exists()
+        # Check output files were created (now in subdirectories)
+        assert (tmp_path / "proposals" / "final_proposal.json").exists()
+        assert (tmp_path / "proposals" / "final_proposal.txt").exists()
+        assert (tmp_path / "summary" / "proposal_summary.md").exists()
+        assert (tmp_path / "summary" / "char_report.json").exists()
+        assert (tmp_path / "summary" / "char_report.txt").exists()
 
         # Validate JSON output is parseable
-        proposal_json = json.loads((tmp_path / "final_proposal.json").read_text())
+        proposal_json = json.loads(
+            (tmp_path / "proposals" / "final_proposal.json").read_text())
         assert "title_en" in proposal_json
         assert "tasks" in proposal_json
 
         # Validate char report
-        char_report = json.loads((tmp_path / "char_report.json").read_text())
+        char_report = json.loads(
+            (tmp_path / "summary" / "char_report.json").read_text())
         assert "abstract_en" in char_report
         assert "state_of_art_objectives" in char_report
 

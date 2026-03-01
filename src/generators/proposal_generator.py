@@ -18,6 +18,7 @@ from src.scrapers.scopus_client import ScopusArticle, ScopusScraper
 from src.utils.llm_client import BaseLLMClient, get_llm_for_role
 from src.utils.prompt_loader import get_prompt, load_prompt_template
 from src.utils.sanitize import scrub_pii_for_llm
+from src.utils.text_utils import safe_limit, safe_truncate
 
 logger = logging.getLogger(__name__)
 
@@ -138,7 +139,8 @@ class ProposalGenerator:
         return clean
 
     async def _gen(self, section: str, draft: DraftIdea, lit: str, proposal: Proposal, limit: int) -> str:
-        prompt = self._prompt(section, draft, lit, proposal, limit)
+        target = safe_limit(limit)
+        prompt = self._prompt(section, draft, lit, proposal, target)
         system = get_prompt("system", "generator")
         resp = await self.llm.generate(prompt, system=system, max_tokens=limit * 2,
                                         temperature=cfg.generator.temperature)
@@ -149,21 +151,22 @@ class ProposalGenerator:
         return text
 
     async def _trim(self, text: str, limit: int, section: str) -> str:
+        target = safe_limit(limit)
         resp = await self.llm.generate(
-            f"Condense this '{section}' section to ≤{limit} chars, keeping key arguments.\n\n{text}",
+            f"Condense this '{section}' section to ≤{target} chars, keeping key arguments.\n\n{text}",
             max_tokens=limit, temperature=0.1)
         r = resp.text.strip()
-        return r[:limit] if len(r) > limit else r
+        return safe_truncate(r, limit) if len(r) > limit else r
 
     async def _gen_tasks(self, draft: DraftIdea, proposal: Proposal, duration: int) -> list[ProposalTask]:
         prompt = load_prompt_template("proposal_tasks").format(
-            topic=draft.research_topic[:500],
+            topic=safe_truncate(draft.research_topic, 500),
             research_questions="; ".join(draft.research_questions),
             duration=duration,
             typology=draft.typology.value,
-            sota_excerpt=proposal.state_of_art_objectives[:1500],
-            plan_excerpt=proposal.research_plan_methods[:2000],
-            method_notes=draft.methodology_notes[:500],
+            sota_excerpt=safe_truncate(proposal.state_of_art_objectives, 1500),
+            plan_excerpt=safe_truncate(proposal.research_plan_methods, 2000),
+            method_notes=safe_truncate(draft.methodology_notes, 500),
             task_desc_limit=CHAR_LIMITS.task_description,
             cost_just_limit=CHAR_LIMITS.cost_justification,
         )
@@ -173,12 +176,14 @@ class ProposalGenerator:
             return [ProposalTask(
                 number=t.get("number", i+1),
                 denomination=t.get("denomination", f"Task {i+1}")[:150],
-                description=t.get("description", "")[:CHAR_LIMITS.task_description],
+                description=safe_truncate(
+                    t.get("description", ""), CHAR_LIMITS.task_description),
                 expected_results=t.get("expected_results", ""),
                 person_months=t.get("person_months", 3.0),
                 start_month=t.get("start_month", 1),
                 duration_months=t.get("duration_months", 6),
-                cost_justification=t.get("cost_justification", "")[:CHAR_LIMITS.cost_justification],
+                cost_justification=safe_truncate(
+                    t.get("cost_justification", ""), CHAR_LIMITS.cost_justification),
             ) for i, t in enumerate(data)]
         except Exception as e:
             logger.error(f"Task parse error: {e}")
@@ -195,7 +200,8 @@ class ProposalGenerator:
         try:
             data = json.loads(self._extract_json(resp.text))
             return [Deliverable(code=d.get("code", f"D{i+1}"), title=d.get("title", ""),
-                                description=d.get("description", "")[:CHAR_LIMITS.deliverable_description],
+                                description=safe_truncate(
+                                    d.get("description", ""), CHAR_LIMITS.deliverable_description),
                                 related_tasks=d.get("related_tasks", []), due_month=d.get("due_month", 0))
                     for i, d in enumerate(data)]
         except Exception:
@@ -212,7 +218,8 @@ class ProposalGenerator:
         try:
             data = json.loads(self._extract_json(resp.text))
             return [Milestone(code=m.get("code", f"M{i+1}"), denomination=m.get("denomination", ""),
-                              description=m.get("description", "")[:CHAR_LIMITS.milestone_description],
+                              description=safe_truncate(
+                                  m.get("description", ""), CHAR_LIMITS.milestone_description),
                               related_tasks=m.get("related_tasks", []), due_month=m.get("due_month", 0))
                     for i, m in enumerate(data)]
         except Exception:

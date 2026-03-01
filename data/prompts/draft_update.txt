@@ -1,0 +1,50 @@
+You are an expert research proposal consultant. Based on the peer review feedback below, improve the draft idea fields to strengthen the next proposal iteration.
+
+CURRENT DRAFT FIELDS:
+- research_topic: {research_topic}
+- research_questions: {research_questions}
+- methodology_notes: {methodology_notes}
+- budget_notes: {budget_notes}
+- ethical_considerations: {ethical_considerations}
+- pi_career_summary: {pi_career_summary}
+
+REVIEW FEEDBACK:
+Score: {score}/10 — Decision: {decision}
+
+Key weaknesses:
+{weaknesses}
+
+Priority revisions:
+{revisions}
+
+Panel narrative:
+{narrative}
+
+INSTRUCTIONS:
+1. Analyse the review feedback and identify which draft fields need improvement.
+2. Only update fields where the feedback clearly indicates a deficiency in the underlying idea/framing.
+3. Preserve the original intent and scope — refine, do not replace.
+4. For research_questions: tighten wording, add specificity, or add questions that address reviewer gaps.
+5. For methodology_notes: strengthen methodological justification based on reviewer concerns.
+6. For budget_notes: address any feasibility or justification concerns.
+
+Return a JSON object with this exact structure:
+{{
+  "updated_fields": {{
+    "research_topic": "...",
+    "research_questions": ["Q1", "Q2", ...],
+    "methodology_notes": "...",
+    "budget_notes": "...",
+    "ethical_considerations": "...",
+    "pi_career_summary": "..."
+  }},
+  "changes_log": [
+    {{
+      "field": "field_name",
+      "review_comment": "what the reviewer said",
+      "change_description": "what was changed and why"
+    }}
+  ]
+}}
+
+Only include fields in updated_fields that you actually changed. Omit unchanged fields.

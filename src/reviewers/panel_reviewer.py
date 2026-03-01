@@ -18,6 +18,7 @@ from src.generators.models import (
 from src.utils.llm_client import BaseLLMClient, get_llm_client, get_llm_for_role
 from src.utils.prompt_loader import get_prompt, load_prompt_template
 from src.utils.sanitize import scrub_identity_for_review
+from src.utils.text_utils import safe_limit, safe_truncate
 
 logger = logging.getLogger(__name__)
 
@@ -113,7 +114,7 @@ class AIReviewer:
         scores = [
             CriterionScore(
                 criterion=cs.get("criterion", ""), sub_criterion=cs.get("sub_criterion", ""),
-                score=float(cs.get("score", 5.0)), justification=cs.get("justification", ""),
+                score=float(cs.get("score") or 5.0), justification=cs.get("justification", ""),
                 strengths=cs.get("strengths", []), weaknesses=cs.get("weaknesses", []),
                 suggestions=cs.get("suggestions", []),
             )
@@ -123,7 +124,7 @@ class AIReviewer:
         return ReviewReport(
             reviewer_id=self.defn.id, reviewer_model=self.defn.model,
             reviewer_provider=self.defn.provider.value, perspective=self.defn.perspective,
-            overall_score=float(data.get("overall_score", 5.0)),
+            overall_score=float(data.get("overall_score") or 5.0),
             criterion_scores=scores,
             general_comments=data.get("general_comments", ""),
             major_revisions=data.get("major_revisions", []),
@@ -256,10 +257,11 @@ class RevisionEngine:
             if not feedback:
                 continue
 
+            target = safe_limit(limit)
             revision_prompt = load_prompt_template("reviewer_revision").format(
                 section=section,
                 current_len=len(text),
-                limit=limit,
+                limit=target,
                 current_text=text,
                 feedback=feedback,
             )
@@ -269,7 +271,7 @@ class RevisionEngine:
             )
             new = resp.text.strip()
             if len(new) > limit:
-                new = new[:limit]
+                new = safe_truncate(new, limit)
             setattr(revised, section, new)
             logger.info(f"  Revised '{section}': {len(new)}/{limit} chars")
 

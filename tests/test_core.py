@@ -227,6 +227,66 @@ class TestDraftSchemaValidation:
             )
 
 
+# =============================================================================
+# Text Utilities
+# =============================================================================
+
+class TestSafeTruncate:
+    def test_short_text_unchanged(self):
+        from src.utils.text_utils import safe_truncate
+        assert safe_truncate("Hello world.", 100) == "Hello world."
+
+    def test_truncate_at_sentence_boundary(self):
+        from src.utils.text_utils import safe_truncate
+        text = "First sentence. Second sentence. Third sentence."
+        result = safe_truncate(text, 35)
+        assert result.endswith(".")
+        assert len(result) <= 35
+
+    def test_truncate_at_word_boundary(self):
+        from src.utils.text_utils import safe_truncate
+        text = "one two three four five six seven eight nine ten"
+        result = safe_truncate(text, 20)
+        assert " " not in result[-1:]  # doesn't end with space
+        assert len(result) <= 20
+
+    def test_hard_cut_last_resort(self):
+        from src.utils.text_utils import safe_truncate
+        text = "a" * 100  # no spaces or sentence boundaries
+        result = safe_truncate(text, 50)
+        assert len(result) == 50
+
+    def test_empty_text(self):
+        from src.utils.text_utils import safe_truncate
+        assert safe_truncate("", 100) == ""
+
+    def test_exact_limit(self):
+        from src.utils.text_utils import safe_truncate
+        text = "Exact."
+        assert safe_truncate(text, 6) == "Exact."
+
+
+class TestSafeLimit:
+    def test_default_buffer(self):
+        from src.utils.text_utils import safe_limit
+        # 6000 * 0.05 = 300 > 200, so buffer = 300
+        assert safe_limit(6000) == 5700
+
+    def test_min_buffer_applied(self):
+        from src.utils.text_utils import safe_limit
+        # 1000 * 0.05 = 50 < 200, so buffer = 200
+        assert safe_limit(1000) == 800
+
+    def test_custom_buffer(self):
+        from src.utils.text_utils import safe_limit
+        assert safe_limit(10000, buffer_pct=0.1, min_buffer=100) == 9000
+
+    def test_very_small_limit(self):
+        from src.utils.text_utils import safe_limit
+        # Should not go below 1
+        assert safe_limit(100) >= 1
+
+
 class TestLLMFactory:
     def test_unknown_provider_raises(self):
         from src.utils.llm_client import get_llm_client
