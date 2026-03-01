@@ -122,7 +122,7 @@ class OpenAIClient(BaseLLMClient):
         messages.append({"role": "user", "content": prompt})
         try:
             resp = await self.client.chat.completions.create(
-                model=self.model, messages=messages, max_tokens=max_tokens, temperature=temperature,
+                model=self.model, messages=messages, max_completion_tokens=max_tokens, temperature=temperature,
             )
         except Exception as exc:
             if _is_retryable_status(exc):
