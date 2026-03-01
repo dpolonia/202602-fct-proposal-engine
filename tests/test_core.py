@@ -3,7 +3,6 @@ Tests for FCT Proposal Engine.
 """
 
 import json
-import textwrap
 from pathlib import Path
 
 import jsonschema
@@ -11,15 +10,19 @@ import pytest
 import yaml
 
 from src.config.fct_constants import (
-    BUDGET_RULES, CHAR_LIMITS, EVAL_CRITERIA, PARTICIPATION_RULES,
-    TYPOLOGY_RULES, ProjectType,
+    BUDGET_RULES,
+    CHAR_LIMITS,
+    EVAL_CRITERIA,
+    PARTICIPATION_RULES,
+    TYPOLOGY_RULES,
+    ProjectType,
 )
 from src.generators.models import DraftIdea, Proposal, ProposalTask
-
 
 # =============================================================================
 # FCT Constants
 # =============================================================================
+
 
 class TestFCTConstants:
     def test_icdt_funding(self):
@@ -35,7 +38,11 @@ class TestFCTConstants:
         assert TYPOLOGY_RULES[ProjectType.PEX].max_duration_months == 18
 
     def test_weights_sum_to_one(self):
-        total = EVAL_CRITERIA.criterion_a_weight + EVAL_CRITERIA.criterion_b_weight + EVAL_CRITERIA.criterion_c_weight
+        total = (
+            EVAL_CRITERIA.criterion_a_weight
+            + EVAL_CRITERIA.criterion_b_weight
+            + EVAL_CRITERIA.criterion_c_weight
+        )
         assert total == pytest.approx(1.0)
 
     def test_indirect_costs(self):
@@ -53,6 +60,7 @@ class TestFCTConstants:
 # =============================================================================
 # Config loading
 # =============================================================================
+
 
 class TestConfigLoading:
     def test_config_yaml_exists(self):
@@ -80,10 +88,13 @@ class TestConfigLoading:
             prov = data["llm"][role]["provider"]
             assert prov in valid, f"Invalid provider for {role}: {prov}"
         for r in data["review_panel"]:
-            assert r["provider"] in valid, f"Invalid provider for reviewer {r['id']}: {r['provider']}"
+            assert r["provider"] in valid, (
+                f"Invalid provider for reviewer {r['id']}: {r['provider']}"
+            )
 
     def test_user_config_loads(self):
         from src.config.settings import UserConfig
+
         c = UserConfig(Path("config.yaml"))
         assert c.typology in ("SR&TD", "PEX")
         assert c.generator.model != ""
@@ -91,6 +102,7 @@ class TestConfigLoading:
 
     def test_enabled_reviewers(self):
         from src.config.settings import UserConfig
+
         c = UserConfig(Path("config.yaml"))
         enabled = c.enabled_reviewers
         assert isinstance(enabled, list)
@@ -102,6 +114,7 @@ class TestConfigLoading:
 # =============================================================================
 # Data Models
 # =============================================================================
+
 
 class TestDraftIdea:
     def test_minimal(self):
@@ -231,13 +244,16 @@ class TestDraftSchemaValidation:
 # Text Utilities
 # =============================================================================
 
+
 class TestSafeTruncate:
     def test_short_text_unchanged(self):
         from src.utils.text_utils import safe_truncate
+
         assert safe_truncate("Hello world.", 100) == "Hello world."
 
     def test_truncate_at_sentence_boundary(self):
         from src.utils.text_utils import safe_truncate
+
         text = "First sentence. Second sentence. Third sentence."
         result = safe_truncate(text, 35)
         assert result.endswith(".")
@@ -245,6 +261,7 @@ class TestSafeTruncate:
 
     def test_truncate_at_word_boundary(self):
         from src.utils.text_utils import safe_truncate
+
         text = "one two three four five six seven eight nine ten"
         result = safe_truncate(text, 20)
         assert " " not in result[-1:]  # doesn't end with space
@@ -252,16 +269,19 @@ class TestSafeTruncate:
 
     def test_hard_cut_last_resort(self):
         from src.utils.text_utils import safe_truncate
+
         text = "a" * 100  # no spaces or sentence boundaries
         result = safe_truncate(text, 50)
         assert len(result) == 50
 
     def test_empty_text(self):
         from src.utils.text_utils import safe_truncate
+
         assert safe_truncate("", 100) == ""
 
     def test_exact_limit(self):
         from src.utils.text_utils import safe_truncate
+
         text = "Exact."
         assert safe_truncate(text, 6) == "Exact."
 
@@ -269,20 +289,24 @@ class TestSafeTruncate:
 class TestSafeLimit:
     def test_default_buffer(self):
         from src.utils.text_utils import safe_limit
+
         # 6000 * 0.05 = 300 > 200, so buffer = 300
         assert safe_limit(6000) == 5700
 
     def test_min_buffer_applied(self):
         from src.utils.text_utils import safe_limit
+
         # 1000 * 0.05 = 50 < 200, so buffer = 200
         assert safe_limit(1000) == 800
 
     def test_custom_buffer(self):
         from src.utils.text_utils import safe_limit
+
         assert safe_limit(10000, buffer_pct=0.1, min_buffer=100) == 9000
 
     def test_very_small_limit(self):
         from src.utils.text_utils import safe_limit
+
         # Should not go below 1
         assert safe_limit(100) >= 1
 
@@ -290,11 +314,13 @@ class TestSafeLimit:
 class TestLLMFactory:
     def test_unknown_provider_raises(self):
         from src.utils.llm_client import get_llm_client
+
         with pytest.raises(ValueError):
             get_llm_client(provider="nonexistent")
 
     def test_missing_key_raises(self):
         from src.utils.llm_client import get_llm_client
+
         # Unless the tester actually has all keys, at least one will be missing
         # This test simply ensures the check path doesn't crash
         try:

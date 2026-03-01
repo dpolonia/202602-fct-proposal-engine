@@ -37,10 +37,16 @@ def _setup_log(verbose: bool):
 # Root group
 # =============================================================================
 
+
 @click.group()
 @click.option("-v", "--verbose", is_flag=True, help="DEBUG logging")
-@click.option("-c", "--config", "config_path", default=None,
-              help="Path to config.yaml (default: ./config.yaml)")
+@click.option(
+    "-c",
+    "--config",
+    "config_path",
+    default=None,
+    help="Path to config.yaml (default: ./config.yaml)",
+)
 def cli(verbose, config_path):
     """FCT Proposal Engine — AI-powered proposal generator & peer reviewer."""
     if config_path:
@@ -52,9 +58,12 @@ def cli(verbose, config_path):
 # generate
 # =============================================================================
 
+
 @cli.command()
 @click.option("-i", "--input", "input_path", required=True, help="Draft idea (YAML/JSON)")
-@click.option("-o", "--output", "output_dir", default=None, help="Output dir (default: from config.yaml)")
+@click.option(
+    "-o", "--output", "output_dir", default=None, help="Output dir (default: from config.yaml)"
+)
 def generate(input_path, output_dir):
     """Generate a proposal from a draft idea."""
     console.print(Panel("🔬 [bold]Proposal Generator[/bold]", style="blue"))
@@ -65,11 +74,15 @@ def generate(input_path, output_dir):
 
     async def _run():
         import yaml
+
         from src.generators.models import DraftIdea
         from src.generators.proposal_generator import ProposalGenerator
 
         p = validate_path(input_path, drafts_root)
-        data = yaml.safe_load(p.read_text()) if p.suffix in (".yaml", ".yml") else json.loads(p.read_text())
+        if p.suffix in (".yaml", ".yml"):
+            data = yaml.safe_load(p.read_text())
+        else:
+            data = json.loads(p.read_text())
         draft = DraftIdea(**data)
         gen = ProposalGenerator()
 
@@ -90,6 +103,7 @@ def generate(input_path, output_dir):
 # =============================================================================
 # review
 # =============================================================================
+
 
 @cli.command()
 @click.option("-i", "--input", "input_path", required=True, help="Proposal JSON")
@@ -127,11 +141,17 @@ def review(input_path, output_dir):
 # pipeline
 # =============================================================================
 
+
 @cli.command()
 @click.option("-i", "--input", "input_path", required=True, help="Draft idea (YAML/JSON)")
 @click.option("-o", "--output", "output_dir", default=None, help="Output dir")
-@click.option("-n", "--iterations", default=None, type=int,
-              help=f"Review-revise cycles (default: {cfg.iterations} from config.yaml)")
+@click.option(
+    "-n",
+    "--iterations",
+    default=None,
+    type=int,
+    help=f"Review-revise cycles (default: {cfg.iterations} from config.yaml)",
+)
 def pipeline(input_path, output_dir, iterations):
     """Full pipeline: generate → review → revise (iterative)."""
     n = iterations if iterations is not None else cfg.iterations
@@ -150,13 +170,22 @@ def pipeline(input_path, output_dir, iterations):
 
         if result.get("history"):
             t = Table(title="Iteration History")
-            t.add_column("Iter"); t.add_column("Score", justify="center")
-            t.add_column("Decision"); t.add_column("A", justify="center")
-            t.add_column("B", justify="center"); t.add_column("C", justify="center")
+            t.add_column("Iter")
+            t.add_column("Score", justify="center")
+            t.add_column("Decision")
+            t.add_column("A", justify="center")
+            t.add_column("B", justify="center")
+            t.add_column("C", justify="center")
             for h in result["history"]:
                 ws = h.get("weighted_scores", {})
-                t.add_row(str(h["iteration"]), f"{h['score']:.1f}", h["decision"],
-                          f"{ws.get('A', 0):.1f}", f"{ws.get('B', 0):.1f}", f"{ws.get('C', 0):.1f}")
+                t.add_row(
+                    str(h["iteration"]),
+                    f"{h['score']:.1f}",
+                    h["decision"],
+                    f"{ws.get('A', 0):.1f}",
+                    f"{ws.get('B', 0):.1f}",
+                    f"{ws.get('C', 0):.1f}",
+                )
             console.print(t)
 
         console.print(f"\n✅ Output: {result['output_dir']}")
@@ -168,13 +197,15 @@ def pipeline(input_path, output_dir, iterations):
 # config (show / validate current settings)
 # =============================================================================
 
+
 @cli.command("config")
 @click.option("--show", is_flag=True, help="Print resolved configuration")
 def config_cmd(show):
     """Show or validate the current config.yaml settings."""
     if show:
         t = Table(title="Resolved Configuration")
-        t.add_column("Setting", style="cyan"); t.add_column("Value")
+        t.add_column("Setting", style="cyan")
+        t.add_column("Value")
         t.add_row("Typology", cfg.typology)
         t.add_row("Principal contractor", cfg.principal_contractor)
         t.add_row("Research units", ", ".join(cfg.default_research_units))
@@ -186,14 +217,26 @@ def config_cmd(show):
         t.add_row("Stop on accept", str(cfg.stop_on_accept))
         t.add_row("Scopus enabled", str(cfg.scopus_enabled))
         t.add_row("Output dir", cfg.output_dir)
-        t.add_row("Formats", ", ".join(
-            f for f, on in [("json", cfg.out_json), ("md", cfg.out_markdown),
-                            ("docx", cfg.out_docx), ("char_report", cfg.out_char_report)] if on))
+        t.add_row(
+            "Formats",
+            ", ".join(
+                f
+                for f, on in [
+                    ("json", cfg.out_json),
+                    ("md", cfg.out_markdown),
+                    ("docx", cfg.out_docx),
+                    ("char_report", cfg.out_char_report),
+                ]
+                if on
+            ),
+        )
         console.print(t)
 
         from src.config.settings import secrets
+
         avail = Table(title="API Key Status")
-        avail.add_column("Provider"); avail.add_column("Status")
+        avail.add_column("Provider")
+        avail.add_column("Status")
         for p in ("anthropic", "openai", "google", "huggingface", "scopus"):
             key = getattr(secrets, f"{p}_api_key", "")
             avail.add_row(p, "✅ set" if key else "❌ missing")
@@ -204,26 +247,38 @@ def config_cmd(show):
 # Helpers
 # =============================================================================
 
+
 def _print_char_table(proposal):
     t = Table(title="Character Counts")
-    t.add_column("Section", style="cyan"); t.add_column("Used", justify="right")
-    t.add_column("Limit", justify="right"); t.add_column("Left", justify="right")
+    t.add_column("Section", style="cyan")
+    t.add_column("Used", justify="right")
+    t.add_column("Limit", justify="right")
+    t.add_column("Left", justify="right")
     t.add_column("OK?")
     for name, c in proposal.char_count_report().items():
-        t.add_row(name, str(c["actual"]), str(c["limit"]), str(c["remaining"]),
-                  "✅" if c["remaining"] >= 0 else "❌ OVER")
+        t.add_row(
+            name,
+            str(c["actual"]),
+            str(c["limit"]),
+            str(c["remaining"]),
+            "✅" if c["remaining"] >= 0 else "❌ OVER",
+        )
     console.print(t)
 
 
 def _print_review_table(consensus):
     t = Table(title="Panel Results")
-    t.add_column("Reviewer", style="cyan"); t.add_column("Score", justify="center")
+    t.add_column("Reviewer", style="cyan")
+    t.add_column("Score", justify="center")
     t.add_column("Decision")
     for r in consensus.individual_reviews:
         t.add_row(r.reviewer_id, f"{r.overall_score:.1f}", r.decision)
     t.add_row("", "", "", end_section=True)
-    t.add_row("[bold]CONSENSUS[/bold]", f"[bold]{consensus.consensus_score:.1f}[/bold]",
-              f"[bold]{consensus.panel_decision}[/bold]")
+    t.add_row(
+        "[bold]CONSENSUS[/bold]",
+        f"[bold]{consensus.consensus_score:.1f}[/bold]",
+        f"[bold]{consensus.panel_decision}[/bold]",
+    )
     console.print(t)
 
 

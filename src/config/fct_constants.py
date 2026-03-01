@@ -7,16 +7,16 @@ Regulamento 5/2024, Guide for Peer Reviewers, and UA Internal Rules.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum
-
+from enum import StrEnum
 
 # =============================================================================
 # Project Typologies
 # =============================================================================
 
-class ProjectType(str, Enum):
-    ICDT = "SR&TD"      # Investigação Científica e Desenvolvimento Tecnológico
-    PEX = "PEX"         # Projetos Exploratórios
+
+class ProjectType(StrEnum):
+    ICDT = "SR&TD"  # Investigação Científica e Desenvolvimento Tecnológico
+    PEX = "PEX"  # Projetos Exploratórios
 
 
 @dataclass(frozen=True)
@@ -59,9 +59,11 @@ TYPOLOGY_RULES: dict[ProjectType, TypologyRules] = {
 # Character Limits (Application Guide Republication Dec 2025)
 # =============================================================================
 
+
 @dataclass(frozen=True)
 class CharLimits:
     """All character limits from Annex I of the Application Guide (republished)."""
+
     # --- General Data ---
     project_title: int = 255
     project_acronym: int = 15
@@ -117,9 +119,11 @@ CHAR_LIMITS = CharLimits()
 # Evaluation Criteria Weights
 # =============================================================================
 
+
 @dataclass(frozen=True)
 class EvalCriteria:
     """Evaluation criteria and weights from Guide for Peer Reviewers."""
+
     # Criterion A: Scientific merit and innovative nature (40%)
     criterion_a_weight: float = 0.40
     a1_scientific_merit_weight: float = 0.50  # within A
@@ -144,11 +148,12 @@ EVAL_CRITERIA = EvalCriteria()
 # Budget Rules
 # =============================================================================
 
+
 @dataclass(frozen=True)
 class BudgetRules:
-    indirect_costs_pct: float = 0.25          # 25% of eligible direct costs
+    indirect_costs_pct: float = 0.25  # 25% of eligible direct costs
     building_adaptation_max_pct: float = 0.10  # max 10% of total eligible
-    ua_minimum_budget_eur: int = 15_000        # UA internal rule
+    ua_minimum_budget_eur: int = 15_000  # UA internal rule
 
 
 BUDGET_RULES = BudgetRules()
@@ -157,6 +162,7 @@ BUDGET_RULES = BudgetRules()
 # =============================================================================
 # Key Dates
 # =============================================================================
+
 
 @dataclass(frozen=True)
 class CallDates:
@@ -174,7 +180,8 @@ CALL_DATES = CallDates()
 # Deliverable Types (from Application Guide)
 # =============================================================================
 
-class DeliverableType(str, Enum):
+
+class DeliverableType(StrEnum):
     REPORT = "Report"
     DATA_MANAGEMENT_PLAN = "Data Management Plan"
     DEMONSTRATOR = "Demonstrator"
@@ -187,11 +194,12 @@ class DeliverableType(str, Enum):
 # Participation Rules
 # =============================================================================
 
+
 @dataclass(frozen=True)
 class ParticipationRules:
-    max_pi_applications: int = 1         # only 1 as PI regardless of typology
-    max_member_if_pi: int = 1            # if PI, max 1 other as team member
-    max_member_if_not_pi: int = 2        # if not PI, max 2 as team member
+    max_pi_applications: int = 1  # only 1 as PI regardless of typology
+    max_member_if_pi: int = 1  # if PI, max 1 other as team member
+    max_member_if_not_pi: int = 2  # if not PI, max 2 as team member
     max_research_units_per_institution: int = 3
     max_sdgs: int = 3
 

@@ -17,8 +17,7 @@ from src.generators.models import DraftIdea
 from src.generators.pipeline import Pipeline
 from src.generators.proposal_generator import ProposalGenerator
 from src.reviewers.panel_reviewer import ReviewPanel, RevisionEngine
-from src.utils.llm_client import LLMResponse, LLMProvider
-
+from src.utils.llm_client import LLMProvider, LLMResponse
 
 # =============================================================================
 # Fixtures
@@ -29,98 +28,183 @@ DRAFTS_DIR = Path("drafts")
 
 def _mock_llm_response(text: str, model: str = "mock-model") -> LLMResponse:
     return LLMResponse(
-        text=text, model=model, provider=LLMProvider.ANTHROPIC,
-        input_tokens=100, output_tokens=len(text), finish_reason="stop",
+        text=text,
+        model=model,
+        provider=LLMProvider.ANTHROPIC,
+        input_tokens=100,
+        output_tokens=len(text),
+        finish_reason="stop",
     )
 
 
 def _build_section_text(section: str, limit: int) -> str:
     """Generate plausible filler text within the char limit."""
     base = f"This is the generated {section} section for the proposal. "
-    return (base * (limit // len(base) + 1))[:limit - 100]
+    return (base * (limit // len(base) + 1))[: limit - 100]
 
 
 def _build_tasks_json() -> str:
-    return json.dumps([
-        {
-            "number": 1, "denomination": "Literature Review & Framework",
-            "description": "Systematic literature review and conceptual framework development.",
-            "expected_results": "Framework document", "person_months": 4.0,
-            "start_month": 1, "duration_months": 8,
-            "cost_justification": "PI time (2PM) + research fellow (2PM).",
-        },
-        {
-            "number": 2, "denomination": "Data Collection & Development",
-            "description": "Primary data collection and prototype development.",
-            "expected_results": "Dataset and prototype", "person_months": 8.0,
-            "start_month": 5, "duration_months": 10,
-            "cost_justification": "Research fellow (6PM) + cloud infra.",
-        },
-        {
-            "number": 3, "denomination": "Validation & Dissemination",
-            "description": "Validation with stakeholders and dissemination of results.",
-            "expected_results": "Validation report and publications", "person_months": 4.0,
-            "start_month": 12, "duration_months": 7,
-            "cost_justification": "Travel + publication fees.",
-        },
-    ])
+    return json.dumps(
+        [
+            {
+                "number": 1,
+                "denomination": "Literature Review & Framework",
+                "description": "Systematic literature review and conceptual framework development.",
+                "expected_results": "Framework document",
+                "person_months": 4.0,
+                "start_month": 1,
+                "duration_months": 8,
+                "cost_justification": "PI time (2PM) + research fellow (2PM).",
+            },
+            {
+                "number": 2,
+                "denomination": "Data Collection & Development",
+                "description": "Primary data collection and prototype development.",
+                "expected_results": "Dataset and prototype",
+                "person_months": 8.0,
+                "start_month": 5,
+                "duration_months": 10,
+                "cost_justification": "Research fellow (6PM) + cloud infra.",
+            },
+            {
+                "number": 3,
+                "denomination": "Validation & Dissemination",
+                "description": "Validation with stakeholders and dissemination of results.",
+                "expected_results": "Validation report and publications",
+                "person_months": 4.0,
+                "start_month": 12,
+                "duration_months": 7,
+                "cost_justification": "Travel + publication fees.",
+            },
+        ]
+    )
 
 
 def _build_deliverables_json() -> str:
-    return json.dumps([
-        {"code": "D1.1", "title": "SLR Report", "type": "Report",
-         "description": "Systematic literature review.", "related_tasks": [1], "due_month": 6},
-        {"code": "D2.1", "title": "Prototype v1", "type": "Demonstrator",
-         "description": "Working prototype.", "related_tasks": [2], "due_month": 14},
-        {"code": "D3.1", "title": "Final Report", "type": "Report",
-         "description": "Final project report.", "related_tasks": [3], "due_month": 18},
-    ])
+    return json.dumps(
+        [
+            {
+                "code": "D1.1",
+                "title": "SLR Report",
+                "type": "Report",
+                "description": "Systematic literature review.",
+                "related_tasks": [1],
+                "due_month": 6,
+            },
+            {
+                "code": "D2.1",
+                "title": "Prototype v1",
+                "type": "Demonstrator",
+                "description": "Working prototype.",
+                "related_tasks": [2],
+                "due_month": 14,
+            },
+            {
+                "code": "D3.1",
+                "title": "Final Report",
+                "type": "Report",
+                "description": "Final project report.",
+                "related_tasks": [3],
+                "due_month": 18,
+            },
+        ]
+    )
 
 
 def _build_milestones_json() -> str:
-    return json.dumps([
-        {"code": "M1", "denomination": "Framework Complete", "description": "Approved.",
-         "related_tasks": [1], "due_month": 6},
-        {"code": "M2", "denomination": "Prototype Ready", "description": "Deployed.",
-         "related_tasks": [2], "due_month": 14},
-        {"code": "M3", "denomination": "Project Close", "description": "All deliverables done.",
-         "related_tasks": [3], "due_month": 18},
-    ])
+    return json.dumps(
+        [
+            {
+                "code": "M1",
+                "denomination": "Framework Complete",
+                "description": "Approved.",
+                "related_tasks": [1],
+                "due_month": 6,
+            },
+            {
+                "code": "M2",
+                "denomination": "Prototype Ready",
+                "description": "Deployed.",
+                "related_tasks": [2],
+                "due_month": 14,
+            },
+            {
+                "code": "M3",
+                "denomination": "Project Close",
+                "description": "All deliverables done.",
+                "related_tasks": [3],
+                "due_month": 18,
+            },
+        ]
+    )
 
 
 def _build_review_json(score: float = 8.0, decision: str = "accept") -> str:
-    return json.dumps({
-        "overall_score": score,
-        "criterion_scores": [
-            {"criterion": "A", "sub_criterion": "A1", "score": score,
-             "justification": "Good.", "strengths": ["Clear objectives"],
-             "weaknesses": [], "suggestions": []},
-            {"criterion": "A", "sub_criterion": "A2", "score": score,
-             "justification": "Novel.", "strengths": ["Original approach"],
-             "weaknesses": [], "suggestions": []},
-            {"criterion": "B", "sub_criterion": "B1", "score": score,
-             "justification": "Strong PI.", "strengths": ["Track record"],
-             "weaknesses": [], "suggestions": []},
-            {"criterion": "B", "sub_criterion": "B2", "score": score,
-             "justification": "Good team.", "strengths": ["Complementary"],
-             "weaknesses": [], "suggestions": []},
-            {"criterion": "C", "sub_criterion": "C", "score": score,
-             "justification": "Feasible.", "strengths": ["Realistic plan"],
-             "weaknesses": [], "suggestions": []},
-        ],
-        "general_comments": "Well-structured proposal with clear objectives.",
-        "major_revisions": [],
-        "minor_revisions": ["Add more detail to task 2."],
-        "decision": decision,
-    })
+    return json.dumps(
+        {
+            "overall_score": score,
+            "criterion_scores": [
+                {
+                    "criterion": "A",
+                    "sub_criterion": "A1",
+                    "score": score,
+                    "justification": "Good.",
+                    "strengths": ["Clear objectives"],
+                    "weaknesses": [],
+                    "suggestions": [],
+                },
+                {
+                    "criterion": "A",
+                    "sub_criterion": "A2",
+                    "score": score,
+                    "justification": "Novel.",
+                    "strengths": ["Original approach"],
+                    "weaknesses": [],
+                    "suggestions": [],
+                },
+                {
+                    "criterion": "B",
+                    "sub_criterion": "B1",
+                    "score": score,
+                    "justification": "Strong PI.",
+                    "strengths": ["Track record"],
+                    "weaknesses": [],
+                    "suggestions": [],
+                },
+                {
+                    "criterion": "B",
+                    "sub_criterion": "B2",
+                    "score": score,
+                    "justification": "Good team.",
+                    "strengths": ["Complementary"],
+                    "weaknesses": [],
+                    "suggestions": [],
+                },
+                {
+                    "criterion": "C",
+                    "sub_criterion": "C",
+                    "score": score,
+                    "justification": "Feasible.",
+                    "strengths": ["Realistic plan"],
+                    "weaknesses": [],
+                    "suggestions": [],
+                },
+            ],
+            "general_comments": "Well-structured proposal with clear objectives.",
+            "major_revisions": [],
+            "minor_revisions": ["Add more detail to task 2."],
+            "decision": decision,
+        }
+    )
 
 
 def _mock_generate_side_effect():
     """Return a side_effect function that produces contextual mock responses."""
     call_count = 0
 
-    async def _side_effect(prompt: str = "", system: str = "", max_tokens: int = 4096,
-                           temperature: float = 0.3) -> LLMResponse:
+    async def _side_effect(
+        prompt: str = "", system: str = "", max_tokens: int = 4096, temperature: float = 0.3
+    ) -> LLMResponse:
         nonlocal call_count
         call_count += 1
         text = prompt.lower()
@@ -158,34 +242,64 @@ def _mock_generate_side_effect():
 
         # Review-iterate: atomize/suggestions
         if "atomize" in text or "suggestion" in text or "grading rubric" in text:
-            return _mock_llm_response(json.dumps([{
-                "id": "SUG-001", "source_reviewer": "mock",
-                "source_text": "Weak.", "issue": "Minor gap",
-                "recommended_fix": "Add detail", "criterion_tags": ["A1"],
-                "target_sections": ["state_of_art_objectives"],
-                "severity": "S1", "evidence_status": "E1",
-                "confidence": "C1", "effort": "F1",
-                "impact": "I1", "dependency": "D0",
-                "actionability": "A1", "acceptance_test": "Check",
-                "depends_on": [], "blocks": [],
-            }]))
+            return _mock_llm_response(
+                json.dumps(
+                    [
+                        {
+                            "id": "SUG-001",
+                            "source_reviewer": "mock",
+                            "source_text": "Weak.",
+                            "issue": "Minor gap",
+                            "recommended_fix": "Add detail",
+                            "criterion_tags": ["A1"],
+                            "target_sections": ["state_of_art_objectives"],
+                            "severity": "S1",
+                            "evidence_status": "E1",
+                            "confidence": "C1",
+                            "effort": "F1",
+                            "impact": "I1",
+                            "dependency": "D0",
+                            "actionability": "A1",
+                            "acceptance_test": "Check",
+                            "depends_on": [],
+                            "blocks": [],
+                        }
+                    ]
+                )
+            )
         # Review-iterate: consistency checks
         if "consistency" in text and ("check" in text or "auditor" in text):
-            return _mock_llm_response(json.dumps([
-                {"check_name": "country_set_consistent", "passed": True, "details": "OK"},
-                {"check_name": "hypotheses_traceability", "passed": True, "details": "OK"},
-                {"check_name": "ethics_human_subjects_consistency", "passed": True, "details": "OK"},
-                {"check_name": "benchmarks_independence_min_package", "passed": True, "details": "OK"},
-            ]))
+            return _mock_llm_response(
+                json.dumps(
+                    [
+                        {"check_name": "country_set_consistent", "passed": True, "details": "OK"},
+                        {"check_name": "hypotheses_traceability", "passed": True, "details": "OK"},
+                        {
+                            "check_name": "ethics_human_subjects_consistency",
+                            "passed": True,
+                            "details": "OK",
+                        },
+                        {
+                            "check_name": "benchmarks_independence_min_package",
+                            "passed": True,
+                            "details": "OK",
+                        },
+                    ]
+                )
+            )
         # Review-iterate: improvement report narrative
         if "improvement report" in text or "executive summary" in text or "narrative" in text:
-            return _mock_llm_response(json.dumps({
-                "executive_summary": "Summary.",
-                "science_method_changes": "Changes.",
-                "feasibility_budget_changes": "Budget.",
-                "ethics_compliance_changes": "Ethics.",
-                "risk_register": "| # | Risk |\n|---|------|\n| 1 | None |",
-            }))
+            return _mock_llm_response(
+                json.dumps(
+                    {
+                        "executive_summary": "Summary.",
+                        "science_method_changes": "Changes.",
+                        "feasibility_budget_changes": "Budget.",
+                        "ethics_compliance_changes": "Ethics.",
+                        "risk_register": "| # | Risk |\n|---|------|\n| 1 | None |",
+                    }
+                )
+            )
 
         # Default fallback
         return _mock_llm_response(f"Generated content for call {call_count}.")
@@ -232,6 +346,7 @@ def draft_example():
 # Integration Tests
 # =============================================================================
 
+
 class TestPipelineIntegration:
     """Full pipeline run with mocked LLMs."""
 
@@ -243,13 +358,19 @@ class TestPipelineIntegration:
         panel.consensus_llm = mock_llm
 
         # Manually set up a minimal panel with mocked reviewers
-        from src.reviewers.panel_reviewer import AIReviewer
         from src.config.settings import ReviewerDef
+        from src.reviewers.panel_reviewer import AIReviewer
 
-        mock_reviewer_def = ReviewerDef({
-            "id": "mock_reviewer", "enabled": True, "provider": "anthropic",
-            "model": "mock", "perspective": "general", "focus_criteria": ["A1", "A2", "B1", "B2", "C"],
-        })
+        mock_reviewer_def = ReviewerDef(
+            {
+                "id": "mock_reviewer",
+                "enabled": True,
+                "provider": "anthropic",
+                "model": "mock",
+                "perspective": "general",
+                "focus_criteria": ["A1", "A2", "B1", "B2", "C"],
+            }
+        )
         reviewer = AIReviewer.__new__(AIReviewer)
         reviewer.defn = mock_reviewer_def
         reviewer.llm = mock_llm
@@ -339,7 +460,7 @@ class TestPipelineIntegration:
             mock_cfg.include_review_narrative = True
             mock_cfg.output_dir = str(tmp_path)
 
-            result = await pipeline.run(draft_example, iterations=1, output_dir=tmp_path)
+            _result = await pipeline.run(draft_example, iterations=1, output_dir=tmp_path)
 
         # Check output files were created (now in subdirectories)
         assert (tmp_path / "proposals" / "final_proposal.json").exists()
@@ -349,14 +470,12 @@ class TestPipelineIntegration:
         assert (tmp_path / "summary" / "char_report.txt").exists()
 
         # Validate JSON output is parseable
-        proposal_json = json.loads(
-            (tmp_path / "proposals" / "final_proposal.json").read_text())
+        proposal_json = json.loads((tmp_path / "proposals" / "final_proposal.json").read_text())
         assert "title_en" in proposal_json
         assert "tasks" in proposal_json
 
         # Validate char report
-        char_report = json.loads(
-            (tmp_path / "summary" / "char_report.json").read_text())
+        char_report = json.loads((tmp_path / "summary" / "char_report.json").read_text())
         assert "abstract_en" in char_report
         assert "state_of_art_objectives" in char_report
 
@@ -364,8 +483,7 @@ class TestPipelineIntegration:
 class TestDraftLoading:
     """Verify all drafts load into DraftIdea models."""
 
-    @pytest.mark.parametrize("yaml_path", sorted(DRAFTS_DIR.glob("*.yaml")),
-                             ids=lambda p: p.name)
+    @pytest.mark.parametrize("yaml_path", sorted(DRAFTS_DIR.glob("*.yaml")), ids=lambda p: p.name)
     def test_draft_loads_as_model(self, yaml_path):
         data = yaml.safe_load(yaml_path.read_text())
         draft = DraftIdea(**data)
@@ -373,8 +491,7 @@ class TestDraftLoading:
         assert len(draft.research_topic) >= 50
         assert draft.typology in (ProjectType.ICDT, ProjectType.PEX)
 
-    @pytest.mark.parametrize("yaml_path", sorted(DRAFTS_DIR.glob("*.yaml")),
-                             ids=lambda p: p.name)
+    @pytest.mark.parametrize("yaml_path", sorted(DRAFTS_DIR.glob("*.yaml")), ids=lambda p: p.name)
     def test_draft_respects_typology_limits(self, yaml_path):
         data = yaml.safe_load(yaml_path.read_text())
         draft = DraftIdea(**data)

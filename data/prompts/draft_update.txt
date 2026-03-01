@@ -48,3 +48,5 @@ Return a JSON object with this exact structure:
 }}
 
 Only include fields in updated_fields that you actually changed. Omit unchanged fields.
+
+Respond ONLY with the JSON object above. Do not include any other text, markdown fences, or explanation.

@@ -6,7 +6,6 @@ Prices are in USD per 1M tokens. Updated March 2026.
 
 from __future__ import annotations
 
-
 # model_prefix → (input_price_per_1M, output_price_per_1M)
 LLM_PRICING: dict[str, tuple[float, float]] = {
     # Anthropic

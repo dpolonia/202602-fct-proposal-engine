@@ -30,20 +30,25 @@ def proposal_to_txt(proposal: Proposal) -> str:
     lines.append("=" * 72)
     lines.append(f"  {proposal.title_en}")
     lines.append(f"  Acronym: {proposal.acronym}  |  Typology: {proposal.typology.value}")
-    lines.append(f"  Duration: {proposal.duration_months} months  |  "
-                 f"Budget: EUR {proposal.total_budget:,.0f}")
+    lines.append(
+        f"  Duration: {proposal.duration_months} months  |  "
+        f"Budget: EUR {proposal.total_budget:,.0f}"
+    )
     lines.append(f"  Keywords: {', '.join(proposal.keywords_en)}")
     lines.append("=" * 72)
     lines.append("")
 
     _section("ABSTRACT (EN)", proposal.abstract_en, CL.abstract_en)
     _section("ABSTRACT (PT)", proposal.abstract_pt, CL.abstract_pt)
-    _section("STATE OF THE ART & OBJECTIVES",
-             proposal.state_of_art_objectives, CL.state_of_art_objectives)
-    _section("RESEARCH PLAN & METHODS",
-             proposal.research_plan_methods, CL.research_plan_methods)
-    _section("BIBLIOGRAPHIC REFERENCES",
-             proposal.bibliographic_references, CL.bibliographic_references)
+    _section(
+        "STATE OF THE ART & OBJECTIVES",
+        proposal.state_of_art_objectives,
+        CL.state_of_art_objectives,
+    )
+    _section("RESEARCH PLAN & METHODS", proposal.research_plan_methods, CL.research_plan_methods)
+    _section(
+        "BIBLIOGRAPHIC REFERENCES", proposal.bibliographic_references, CL.bibliographic_references
+    )
 
     # Tasks
     if proposal.tasks:
@@ -52,14 +57,18 @@ def proposal_to_txt(proposal: Proposal) -> str:
         lines.append("=" * 72)
         for t in proposal.tasks:
             lines.append(f"\n  T{t.number}: {t.denomination}")
-            lines.append(f"  Months {t.start_month}-"
-                         f"{t.start_month + t.duration_months - 1}  |  "
-                         f"{t.person_months} PM")
+            lines.append(
+                f"  Months {t.start_month}-"
+                f"{t.start_month + t.duration_months - 1}  |  "
+                f"{t.person_months} PM"
+            )
             lines.append(f"  [{len(t.description):,} / {CL.task_description:,} chars]")
             lines.append(f"  {t.description}")
             if t.cost_justification:
-                lines.append(f"\n  Cost justification "
-                             f"[{len(t.cost_justification):,} / {CL.cost_justification:,} chars]:")
+                lines.append(
+                    f"\n  Cost justification "
+                    f"[{len(t.cost_justification):,} / {CL.cost_justification:,} chars]:"
+                )
                 lines.append(f"  {t.cost_justification}")
         lines.append("")
 
@@ -84,9 +93,13 @@ def proposal_to_txt(proposal: Proposal) -> str:
         lines.append("")
 
     _section("MANAGEMENT STRUCTURE", proposal.management_structure, CL.management_structure)
-    _section("INSTITUTION DESCRIPTION", proposal.institution_description, CL.institution_description)
+    _section(
+        "INSTITUTION DESCRIPTION", proposal.institution_description, CL.institution_description
+    )
     _section("CAREER PROFILE", proposal.career_profile, CL.career_profile)
-    _section("CONTRIBUTIONS - NEW IDEAS", proposal.contributions_new_ideas, CL.contributions_new_ideas)
+    _section(
+        "CONTRIBUTIONS - NEW IDEAS", proposal.contributions_new_ideas, CL.contributions_new_ideas
+    )
     _section("CONTRIBUTIONS - TEAMS", proposal.contributions_teams, CL.contributions_teams)
     _section("CONTRIBUTIONS - SOCIETY", proposal.contributions_society, CL.contributions_society)
     _section("FURTHER DETAILS", proposal.further_details, CL.further_details)
@@ -171,16 +184,16 @@ def review_to_txt(consensus: ConsensusReport) -> str:
                     lines.append(f"    > {sg}")
 
         if review.general_comments:
-            lines.append(f"\n  General Comments:")
+            lines.append("\n  General Comments:")
             lines.append(f"  {review.general_comments}")
 
         if review.major_revisions:
-            lines.append(f"\n  Major Revisions:")
+            lines.append("\n  Major Revisions:")
             for r in review.major_revisions:
                 lines.append(f"    * {r}")
 
         if review.minor_revisions:
-            lines.append(f"\n  Minor Revisions:")
+            lines.append("\n  Minor Revisions:")
             for r in review.minor_revisions:
                 lines.append(f"    * {r}")
 
@@ -209,9 +222,7 @@ def char_report_to_txt(report: dict[str, dict[str, int]]) -> str:
         status = "OK" if remaining >= 0 else "OVER"
         if remaining < 0:
             all_ok = False
-        lines.append(
-            f"  {name:<30s} {actual:>7,d} {limit:>7,d} {remaining:>7,d}  {status}"
-        )
+        lines.append(f"  {name:<30s} {actual:>7,d} {limit:>7,d} {remaining:>7,d}  {status}")
 
     lines.append("")
     lines.append(f"  Overall: {'ALL WITHIN LIMITS' if all_ok else 'SOME SECTIONS OVER LIMIT'}")
@@ -223,6 +234,7 @@ def char_report_to_txt(report: dict[str, dict[str, int]]) -> str:
 # =============================================================================
 # FCT-REVIEW-ITERATE v1 Markdown Formatters
 # =============================================================================
+
 
 def proposal_to_application_md(proposal: Proposal) -> str:
     """Full proposal in markdown format with all sections, task/deliverable/milestone tables."""
@@ -256,12 +268,15 @@ def proposal_to_application_md(proposal: Proposal) -> str:
 
     _md_section("Abstract (EN)", proposal.abstract_en, CL.abstract_en)
     _md_section("Abstract (PT)", proposal.abstract_pt, CL.abstract_pt)
-    _md_section("State of the Art & Objectives",
-                proposal.state_of_art_objectives, CL.state_of_art_objectives)
-    _md_section("Research Plan & Methods",
-                proposal.research_plan_methods, CL.research_plan_methods)
-    _md_section("Bibliographic References",
-                proposal.bibliographic_references, CL.bibliographic_references)
+    _md_section(
+        "State of the Art & Objectives",
+        proposal.state_of_art_objectives,
+        CL.state_of_art_objectives,
+    )
+    _md_section("Research Plan & Methods", proposal.research_plan_methods, CL.research_plan_methods)
+    _md_section(
+        "Bibliographic References", proposal.bibliographic_references, CL.bibliographic_references
+    )
 
     # Tasks table
     if proposal.tasks:
@@ -296,8 +311,7 @@ def proposal_to_application_md(proposal: Proposal) -> str:
         for d in proposal.deliverables:
             tasks_str = ", ".join(f"T{t}" for t in d.related_tasks)
             lines.append(
-                f"| {d.code} | {d.title} | {d.type.value} | "
-                f"M{d.due_month} | {tasks_str} |"
+                f"| {d.code} | {d.title} | {d.type.value} | M{d.due_month} | {tasks_str} |"
             )
         lines.append("")
 
@@ -309,26 +323,22 @@ def proposal_to_application_md(proposal: Proposal) -> str:
         lines.append("|------|-----------|-----|-------|")
         for m in proposal.milestones:
             tasks_str = ", ".join(f"T{t}" for t in m.related_tasks)
-            lines.append(
-                f"| {m.code} | {m.denomination} | M{m.due_month} | {tasks_str} |"
-            )
+            lines.append(f"| {m.code} | {m.denomination} | M{m.due_month} | {tasks_str} |")
         lines.append("")
 
-    _md_section("Management Structure",
-                proposal.management_structure, CL.management_structure)
-    _md_section("Institution Description",
-                proposal.institution_description, CL.institution_description)
+    _md_section("Management Structure", proposal.management_structure, CL.management_structure)
+    _md_section(
+        "Institution Description", proposal.institution_description, CL.institution_description
+    )
     _md_section("Career Profile", proposal.career_profile, CL.career_profile)
-    _md_section("Contributions - New Ideas",
-                proposal.contributions_new_ideas, CL.contributions_new_ideas)
-    _md_section("Contributions - Teams",
-                proposal.contributions_teams, CL.contributions_teams)
-    _md_section("Contributions - Society",
-                proposal.contributions_society, CL.contributions_society)
+    _md_section(
+        "Contributions - New Ideas", proposal.contributions_new_ideas, CL.contributions_new_ideas
+    )
+    _md_section("Contributions - Teams", proposal.contributions_teams, CL.contributions_teams)
+    _md_section("Contributions - Society", proposal.contributions_society, CL.contributions_society)
     _md_section("Further Details", proposal.further_details, CL.further_details)
     _md_section("Team CV Synopsis", proposal.team_cv_synopsis, CL.team_cv_synopsis)
-    _md_section("Ethics Justification",
-                proposal.ethics_justification, CL.ethics_justification)
+    _md_section("Ethics Justification", proposal.ethics_justification, CL.ethics_justification)
 
     if proposal.why_timely_pex:
         _md_section("Why Timely (PEX)", proposal.why_timely_pex, CL.why_timely_pex)
@@ -391,36 +401,36 @@ def improvement_report_to_md(report: ImprovementReport, version: int) -> str:
 
     severity_counts = {"S3": 0, "S2": 0, "S1": 0, "S0": 0}
     for sug in report.all_suggestions:
-        severity_counts[sug.severity.value] = (
-            severity_counts.get(sug.severity.value, 0) + 1
-        )
+        severity_counts[sug.severity.value] = severity_counts.get(sug.severity.value, 0) + 1
 
     lines.append(f"- **Adopted:** {adopted}")
     lines.append(f"- **Partially adopted:** {partial}")
     lines.append(f"- **Deferred:** {deferred}")
     lines.append(f"- **Not adopted:** {rejected}")
-    lines.append(f"- **Severity breakdown:** "
-                 f"S3={severity_counts['S3']}, S2={severity_counts['S2']}, "
-                 f"S1={severity_counts['S1']}, S0={severity_counts['S0']}")
+    lines.append(
+        f"- **Severity breakdown:** "
+        f"S3={severity_counts['S3']}, S2={severity_counts['S2']}, "
+        f"S1={severity_counts['S1']}, S0={severity_counts['S0']}"
+    )
     lines.append("")
 
     # 4. Edits Executed
     lines.append("## 4. Edits Executed")
     lines.append("")
-    sections_edited = list({
-        a.section_modified for a in report.actions
-        if a.action in ("adopted", "partially_adopted") and a.section_modified
-    })
+    sections_edited = list(
+        {
+            a.section_modified
+            for a in report.actions
+            if a.action in ("adopted", "partially_adopted") and a.section_modified
+        }
+    )
     lines.append(f"**Sections edited:** {', '.join(sections_edited) or 'none'}")
     lines.append("")
 
     # 5. Non-adoptions & Deferrals
     lines.append("## 5. Non-adoptions & Deferrals")
     lines.append("")
-    non_adopted = [
-        a for a in report.actions
-        if a.action in ("deferred", "not_adopted")
-    ]
+    non_adopted = [a for a in report.actions if a.action in ("deferred", "not_adopted")]
     if non_adopted:
         lines.append("| SUG-ID | Action | Reason |")
         lines.append("|--------|--------|--------|")
@@ -435,10 +445,7 @@ def improvement_report_to_md(report: ImprovementReport, version: int) -> str:
     # 6. High-level Change Log
     lines.append("## 6. Change Log")
     lines.append("")
-    active_actions = [
-        a for a in report.actions
-        if a.action in ("adopted", "partially_adopted")
-    ]
+    active_actions = [a for a in report.actions if a.action in ("adopted", "partially_adopted")]
     if active_actions:
         lines.append("| SUG-ID | Section | Action | Before (chars) | After (chars) | Test |")
         lines.append("|--------|---------|--------|----------------|---------------|------|")
@@ -459,12 +466,8 @@ def improvement_report_to_md(report: ImprovementReport, version: int) -> str:
     lines.append("## 7. Traceability Matrix")
     lines.append("")
     if report.all_suggestions:
-        lines.append(
-            "| ID | Reviewer | Severity | Criterion | Action | Section | Test Result |"
-        )
-        lines.append(
-            "|----|----------|----------|-----------|--------|---------|-------------|"
-        )
+        lines.append("| ID | Reviewer | Severity | Criterion | Action | Section | Test Result |")
+        lines.append("|----|----------|----------|-----------|--------|---------|-------------|")
         action_map = {a.suggestion_id: a for a in report.actions}
         for sug in report.all_suggestions:
             act = action_map.get(sug.id)
@@ -525,8 +528,10 @@ def improvement_report_to_md(report: ImprovementReport, version: int) -> str:
         cs = report.cost_summary
         lines.append("## 13. LLM Usage & Cost Summary")
         lines.append("")
-        lines.append(f"**Total tokens:** {cs.total_tokens:,} "
-                     f"(input: {cs.total_input_tokens:,}, output: {cs.total_output_tokens:,})")
+        lines.append(
+            f"**Total tokens:** {cs.total_tokens:,} "
+            f"(input: {cs.total_input_tokens:,}, output: {cs.total_output_tokens:,})"
+        )
         lines.append(f"**Estimated cost:** ${cs.total_cost_usd:.4f} USD")
         lines.append("")
         lines.append("### Cost by step")
@@ -549,7 +554,7 @@ def improvement_report_to_md(report: ImprovementReport, version: int) -> str:
 
 def cost_report_to_md(summary: CostSummary, version: int) -> str:
     """Render a detailed LLM traffic & cost report as markdown."""
-    from src.config.llm_pricing import LLM_PRICING, DEFAULT_PRICING
+    from src.config.llm_pricing import DEFAULT_PRICING, LLM_PRICING
 
     lines: list[str] = []
 
@@ -560,9 +565,11 @@ def cost_report_to_md(summary: CostSummary, version: int) -> str:
     lines.append("## Summary")
     lines.append("")
     lines.append(f"- **Total calls:** {len(summary.calls)}")
-    lines.append(f"- **Total tokens:** {summary.total_tokens:,} "
-                 f"(input: {summary.total_input_tokens:,}, "
-                 f"output: {summary.total_output_tokens:,})")
+    lines.append(
+        f"- **Total tokens:** {summary.total_tokens:,} "
+        f"(input: {summary.total_input_tokens:,}, "
+        f"output: {summary.total_output_tokens:,})"
+    )
     lines.append(f"- **Estimated cost:** ${summary.total_cost_usd:.4f} USD")
     lines.append("")
 

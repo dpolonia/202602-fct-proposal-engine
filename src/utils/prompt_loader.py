@@ -5,7 +5,7 @@ Templates are cached on first access.
 
 from __future__ import annotations
 
-from functools import lru_cache
+from functools import cache
 from pathlib import Path
 
 import yaml
@@ -13,7 +13,7 @@ import yaml
 _PROMPTS_DIR = Path(__file__).resolve().parent.parent.parent / "data" / "prompts"
 
 
-@lru_cache(maxsize=None)
+@cache
 def _load_yaml(name: str) -> dict:
     path = _PROMPTS_DIR / f"{name}.yaml"
     if not path.exists():
@@ -21,7 +21,7 @@ def _load_yaml(name: str) -> dict:
     return yaml.safe_load(path.read_text(encoding="utf-8"))
 
 
-@lru_cache(maxsize=None)
+@cache
 def _load_txt(name: str) -> str:
     path = _PROMPTS_DIR / f"{name}.txt"
     if not path.exists():

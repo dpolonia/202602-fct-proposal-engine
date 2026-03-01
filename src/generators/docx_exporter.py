@@ -53,7 +53,11 @@ class DocxExporter:
 
     @staticmethod
     def _add_heading_with_chars(
-        doc: Document, text: str, actual: int, limit: int, level: int = 1,
+        doc: Document,
+        text: str,
+        actual: int,
+        limit: int,
+        level: int = 1,
     ) -> None:
         """Add a heading with character count display."""
         doc.add_heading(f"{text} [{actual:,} / {limit:,} chars]", level=level)
@@ -113,9 +117,7 @@ class DocxExporter:
         if proposal.keywords_en:
             kw_para = doc.add_paragraph()
             kw_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            kw_para.add_run(
-                f"Keywords: {', '.join(proposal.keywords_en)}"
-            ).font.size = Pt(11)
+            kw_para.add_run(f"Keywords: {', '.join(proposal.keywords_en)}").font.size = Pt(11)
 
         doc.add_paragraph("")
 
@@ -125,15 +127,19 @@ class DocxExporter:
         rows = []
         for name, counts in report.items():
             status = "OK" if counts["remaining"] >= 0 else "OVER"
-            rows.append([
-                name.replace("_", " ").title(),
-                f"{counts['actual']:,}",
-                f"{counts['limit']:,}",
-                f"{counts['remaining']:,}",
-                status,
-            ])
+            rows.append(
+                [
+                    name.replace("_", " ").title(),
+                    f"{counts['actual']:,}",
+                    f"{counts['limit']:,}",
+                    f"{counts['remaining']:,}",
+                    status,
+                ]
+            )
         DocxExporter._add_table(
-            doc, ["Section", "Used", "Limit", "Remaining", "Status"], rows,
+            doc,
+            ["Section", "Used", "Limit", "Remaining", "Status"],
+            rows,
         )
 
         doc.add_page_break()
@@ -142,12 +148,17 @@ class DocxExporter:
         sections = [
             ("Abstract (EN)", proposal.abstract_en, CL.abstract_en),
             ("Abstract (PT)", proposal.abstract_pt, CL.abstract_pt),
-            ("State of the Art & Objectives",
-             proposal.state_of_art_objectives, CL.state_of_art_objectives),
-            ("Research Plan & Methods",
-             proposal.research_plan_methods, CL.research_plan_methods),
-            ("Bibliographic References",
-             proposal.bibliographic_references, CL.bibliographic_references),
+            (
+                "State of the Art & Objectives",
+                proposal.state_of_art_objectives,
+                CL.state_of_art_objectives,
+            ),
+            ("Research Plan & Methods", proposal.research_plan_methods, CL.research_plan_methods),
+            (
+                "Bibliographic References",
+                proposal.bibliographic_references,
+                CL.bibliographic_references,
+            ),
         ]
         for title, body, limit in sections:
             if not body:
@@ -167,14 +178,20 @@ class DocxExporter:
                     level=2,
                 )
                 DocxExporter._add_heading_with_chars(
-                    doc, "Description", len(t.description),
-                    CL.task_description, level=3,
+                    doc,
+                    "Description",
+                    len(t.description),
+                    CL.task_description,
+                    level=3,
                 )
                 doc.add_paragraph(t.description)
                 if t.cost_justification:
                     DocxExporter._add_heading_with_chars(
-                        doc, "Cost Justification", len(t.cost_justification),
-                        CL.cost_justification, level=3,
+                        doc,
+                        "Cost Justification",
+                        len(t.cost_justification),
+                        CL.cost_justification,
+                        level=3,
                     )
                     doc.add_paragraph(t.cost_justification)
 
@@ -186,7 +203,9 @@ class DocxExporter:
                 for d in proposal.deliverables
             ]
             DocxExporter._add_table(
-                doc, ["Code", "Title", "Due Month", "Description"], rows,
+                doc,
+                ["Code", "Title", "Due Month", "Description"],
+                rows,
             )
 
         # Milestones
@@ -197,17 +216,31 @@ class DocxExporter:
                 for m in proposal.milestones
             ]
             DocxExporter._add_table(
-                doc, ["Code", "Denomination", "Due Month", "Description"], rows,
+                doc,
+                ["Code", "Denomination", "Due Month", "Description"],
+                rows,
             )
 
         # Remaining sections
         remaining = [
             ("Management Structure", proposal.management_structure, CL.management_structure),
-            ("Institution Description", proposal.institution_description, CL.institution_description),
+            (
+                "Institution Description",
+                proposal.institution_description,
+                CL.institution_description,
+            ),
             ("Career Profile", proposal.career_profile, CL.career_profile),
-            ("Contributions \u2014 New Ideas", proposal.contributions_new_ideas, CL.contributions_new_ideas),
+            (
+                "Contributions \u2014 New Ideas",
+                proposal.contributions_new_ideas,
+                CL.contributions_new_ideas,
+            ),
             ("Contributions \u2014 Teams", proposal.contributions_teams, CL.contributions_teams),
-            ("Contributions \u2014 Society", proposal.contributions_society, CL.contributions_society),
+            (
+                "Contributions \u2014 Society",
+                proposal.contributions_society,
+                CL.contributions_society,
+            ),
             ("Further Details", proposal.further_details, CL.further_details),
             ("Team CV Synopsis", proposal.team_cv_synopsis, CL.team_cv_synopsis),
             ("Ethics Justification", proposal.ethics_justification, CL.ethics_justification),
@@ -220,7 +253,10 @@ class DocxExporter:
 
         if proposal.why_timely_pex:
             DocxExporter._add_heading_with_chars(
-                doc, "Why Timely (PEX)", len(proposal.why_timely_pex), CL.why_timely_pex,
+                doc,
+                "Why Timely (PEX)",
+                len(proposal.why_timely_pex),
+                CL.why_timely_pex,
             )
             doc.add_paragraph(proposal.why_timely_pex)
 
@@ -269,7 +305,9 @@ class DocxExporter:
                 for h in history
             ]
             DocxExporter._add_table(
-                doc, ["Iter", "Score", "Decision", "A", "B", "C"], rows,
+                doc,
+                ["Iter", "Score", "Decision", "A", "B", "C"],
+                rows,
             )
 
         # Abstract
@@ -285,7 +323,9 @@ class DocxExporter:
             if body:
                 doc.add_heading(title, level=1)
                 # Show first 2000 chars for summary
-                text = body if len(body) <= 2000 else body[:2000] + "\n\n[... truncated for summary]"
+                text = (
+                    body if len(body) <= 2000 else body[:2000] + "\n\n[... truncated for summary]"
+                )
                 doc.add_paragraph(text)
 
         # Panel narrative
@@ -370,14 +410,17 @@ class DocxExporter:
                 for h in history
             ]
             DocxExporter._add_table(
-                doc, ["Iter", "Score", "Decision", "A", "B", "C"], rows,
+                doc,
+                ["Iter", "Score", "Decision", "A", "B", "C"],
+                rows,
             )
 
         # Individual reviewer reports
         doc.add_heading("Individual Reviewer Reports", level=1)
         for review in consensus.individual_reviews:
             doc.add_heading(
-                f"{review.reviewer_id} ({review.perspective})", level=2,
+                f"{review.reviewer_id} ({review.perspective})",
+                level=2,
             )
             doc.add_paragraph(
                 f"Model: {review.reviewer_provider}/{review.reviewer_model}  |  "
@@ -395,7 +438,9 @@ class DocxExporter:
                     for cs in review.criterion_scores
                 ]
                 DocxExporter._add_table(
-                    doc, ["Criterion", "Score", "Justification"], rows,
+                    doc,
+                    ["Criterion", "Score", "Justification"],
+                    rows,
                 )
 
             if review.general_comments:
@@ -411,7 +456,8 @@ class DocxExporter:
             doc.add_heading("Draft Evolution Log", level=1)
             for entry in draft_changes:
                 doc.add_heading(
-                    f"v{entry['from_version']} \u2192 v{entry['to_version']}", level=2,
+                    f"v{entry['from_version']} \u2192 v{entry['to_version']}",
+                    level=2,
                 )
                 for change in entry.get("changes", []):
                     field = change.get("field", "unknown")

@@ -8,7 +8,6 @@ from __future__ import annotations
 import difflib
 import json
 import logging
-import re
 import shutil
 from pathlib import Path
 
@@ -16,6 +15,7 @@ import yaml
 
 from src.config.settings import cfg
 from src.generators.models import ConsensusReport, DraftIdea
+from src.utils.json_utils import extract_json
 from src.utils.llm_client import BaseLLMClient, get_llm_for_role
 from src.utils.prompt_loader import load_prompt_template
 
@@ -64,19 +64,25 @@ class DraftUpdater:
             narrative=consensus.panel_narrative[:2000],
         )
 
-        resp = await self.llm.generate(prompt, max_tokens=4000, temperature=0.3)
-        changes_log = self._apply_updates(draft, resp.text)
+        resp = await self.llm.generate_json(prompt, max_tokens=4000)
+        changes_log = await self._apply_updates(draft, resp.text)
         logger.info(f"  Draft updated: {len(changes_log)} field(s) changed for v{version + 1}")
         return draft, changes_log
 
-    def _apply_updates(self, draft: DraftIdea, response_text: str) -> list[dict]:
-        """Parse LLM response and apply updates to draft in-place."""
+    async def _apply_updates(self, draft: DraftIdea, response_text: str) -> list[dict]:
+        """Parse LLM response and apply updates to draft in-place.
+
+        On JSON parse failure, sends the broken response back to the LLM
+        with a repair prompt for a single retry.
+        """
         try:
-            clean = self._extract_json(response_text)
+            clean = extract_json(response_text)
             data = json.loads(clean)
         except (json.JSONDecodeError, ValueError) as e:
-            logger.warning(f"Draft update JSON parse failed: {e}")
-            return []
+            logger.warning(f"Draft update JSON parse failed: {e} — attempting repair")
+            data = await self._repair_json(response_text)
+            if data is None:
+                return []
 
         updated_fields = data.get("updated_fields", {})
         changes_log = data.get("changes_log", [])
@@ -90,19 +96,21 @@ class DraftUpdater:
 
         return changes_log
 
-    @staticmethod
-    def _extract_json(text: str) -> str:
-        """Extract JSON from LLM output, stripping markdown fences."""
-        clean = text.strip()
-        m = re.search(r"```(?:json)?\s*\n?(.*?)```", clean, re.DOTALL)
-        if m:
-            return m.group(1).strip()
-        for start_char, end_char in [("{", "}"), ("[", "]")]:
-            start = clean.find(start_char)
-            end = clean.rfind(end_char)
-            if start != -1 and end > start:
-                return clean[start:end + 1]
-        return clean
+    async def _repair_json(self, broken_text: str) -> dict | None:
+        """Send broken JSON back to the LLM for a single repair attempt."""
+        repair_prompt = (
+            "The following text was supposed to be a valid JSON object but "
+            "failed to parse. Please return ONLY the corrected JSON object "
+            "with no other text, markdown fences, or explanation.\n\n"
+            f"{broken_text[:6000]}"
+        )
+        try:
+            resp = await self.llm.generate_json(repair_prompt, max_tokens=4000)
+            clean = extract_json(resp.text)
+            return json.loads(clean)
+        except (json.JSONDecodeError, ValueError, Exception) as e:
+            logger.warning(f"JSON repair also failed: {e}")
+            return None
 
     @staticmethod
     def save_backup(
@@ -142,10 +150,12 @@ class DraftUpdater:
         """Save a unified diff between the old and new draft YAML serializations."""
         output_dir.mkdir(parents=True, exist_ok=True)
 
-        old_yaml = yaml.dump(old_draft.model_dump(mode="json"),
-                             default_flow_style=False, allow_unicode=True)
-        new_yaml = yaml.dump(new_draft.model_dump(mode="json"),
-                             default_flow_style=False, allow_unicode=True)
+        old_yaml = yaml.dump(
+            old_draft.model_dump(mode="json"), default_flow_style=False, allow_unicode=True
+        )
+        new_yaml = yaml.dump(
+            new_draft.model_dump(mode="json"), default_flow_style=False, allow_unicode=True
+        )
 
         diff = difflib.unified_diff(
             old_yaml.splitlines(keepends=True),

@@ -156,5 +156,5 @@
       "maximum": 250000
     }
   },
-  "additionalProperties": false
+  "additionalProperties": true
 }

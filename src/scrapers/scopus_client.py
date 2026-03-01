@@ -57,18 +57,27 @@ class ScopusScraper:
         wait=wait_exponential(min=1, max=15),
         before_sleep=lambda rs: logger.warning(
             "Scopus search retry %d/3 after: %s",
-            rs.attempt_number, redact_secrets(str(rs.outcome.exception())),
+            rs.attempt_number,
+            redact_secrets(str(rs.outcome.exception())),
         ),
     )
-    async def search(self, query: str, max_results: int = 50, sort: str = "-citedby-count",
-                     year_from: int | None = None, subject_area: str | None = None) -> list[ScopusArticle]:
+    async def search(
+        self,
+        query: str,
+        max_results: int = 50,
+        sort: str = "-citedby-count",
+        year_from: int | None = None,
+        subject_area: str | None = None,
+    ) -> list[ScopusArticle]:
         params: dict = {
-            "query": query, "count": min(max_results, 25), "sort": sort,
+            "query": query,
+            "count": min(max_results, 25),
+            "sort": sort,
             "field": "dc:title,dc:creator,prism:publicationName,prism:coverDate,"
-                     "prism:doi,citedby-count,authkeywords,dc:identifier,link",
+            "prism:doi,citedby-count,authkeywords,dc:identifier,link",
         }
         if year_from:
-#            params["date"] = f"{year_from}-2099"
+            #            params["date"] = f"{year_from}-2099"
             params["date"] = f"{year_from}-2099"
         if subject_area:
             params["subj"] = subject_area
@@ -107,7 +116,8 @@ class ScopusScraper:
         wait=wait_exponential(min=1, max=15),
         before_sleep=lambda rs: logger.warning(
             "Scopus abstract retry %d/3 after: %s",
-            rs.attempt_number, redact_secrets(str(rs.outcome.exception())),
+            rs.attempt_number,
+            redact_secrets(str(rs.outcome.exception())),
         ),
     )
     async def get_abstract(self, scopus_id: str) -> str:
@@ -123,33 +133,51 @@ class ScopusScraper:
             logger.warning(f"Scopus abstract {scopus_id}: HTTP {resp.status_code} (not retryable)")
             return ""
 
-    async def search_for_proposal(self, topic: str, keywords: list[str],
-                                   max_results: int | None = None,
-                                   year_from: int | None = None) -> list[ScopusArticle]:
+    async def search_for_proposal(
+        self,
+        topic: str,
+        keywords: list[str],
+        max_results: int | None = None,
+        year_from: int | None = None,
+    ) -> list[ScopusArticle]:
         """Multi-query search using settings from config.yaml."""
         mr = max_results or cfg.scopus_max_results
         yf = year_from or cfg.scopus_year_from
 
         all_articles: dict[str, ScopusArticle] = {}
-        main_results = await self.search(' AND '.join(f'TITLE-ABS-KEY({w})' for w in topic.split()), max_results=mr // 2, year_from=yf)
+        topic_query = " AND ".join(f"TITLE-ABS-KEY({w})" for w in topic.split())
+        main_results = await self.search(
+            topic_query,
+            max_results=mr // 2,
+            year_from=yf,
+        )
         for a in main_results:
             all_articles[a.scopus_id] = a
 
         for kw in keywords[:4]:
             kw_results = await self.search(
-                ' AND '.join(f'TITLE-ABS-KEY({w})' for w in kw.split()) + f' AND TITLE-ABS-KEY({topic.split()[0]})',
-                max_results=10, year_from=yf,
+                " AND ".join(f"TITLE-ABS-KEY({w})" for w in kw.split())
+                + f" AND TITLE-ABS-KEY({topic.split()[0]})",
+                max_results=10,
+                year_from=yf,
             )
             for a in kw_results:
                 if a.scopus_id not in all_articles:
                     all_articles[a.scopus_id] = a
 
-        sorted_articles = sorted(all_articles.values(), key=lambda a: a.citation_count, reverse=True)
+        sorted_articles = sorted(
+            all_articles.values(),
+            key=lambda a: a.citation_count,
+            reverse=True,
+        )
 
         if cfg.scopus_enrich_abstracts:
-            top = sorted_articles[:cfg.scopus_top_abstracts]
-            abstracts = await asyncio.gather(*(self.get_abstract(a.scopus_id) for a in top), return_exceptions=True)
-            for article, abstract in zip(top, abstracts):
+            top = sorted_articles[: cfg.scopus_top_abstracts]
+            abstracts = await asyncio.gather(
+                *(self.get_abstract(a.scopus_id) for a in top),
+                return_exceptions=True,
+            )
+            for article, abstract in zip(top, abstracts, strict=False):
                 if isinstance(abstract, str):
                     article.abstract = abstract
 
@@ -159,13 +187,21 @@ class ScopusScraper:
         try:
             return ScopusArticle(
                 scopus_id=entry.get("dc:identifier", "").replace("SCOPUS_ID:", ""),
-                title=entry.get("dc:title", ""), authors=entry.get("dc:creator", ""),
+                title=entry.get("dc:title", ""),
+                authors=entry.get("dc:creator", ""),
                 journal=entry.get("prism:publicationName", ""),
                 year=int(entry.get("prism:coverDate", "0000")[:4]),
                 doi=entry.get("prism:doi", ""),
                 citation_count=int(entry.get("citedby-count", 0)),
                 keywords=[k.strip() for k in entry.get("authkeywords", "").split("|") if k.strip()],
-                url=next((l["@href"] for l in entry.get("link", []) if l.get("@ref") == "scopus"), ""),
+                url=next(
+                    (
+                        link["@href"]
+                        for link in entry.get("link", [])
+                        if link.get("@ref") == "scopus"
+                    ),
+                    "",
+                ),
             )
         except Exception as e:
             logger.warning(f"Scopus parse error: {e}")
