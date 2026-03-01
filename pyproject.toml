@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "fct-proposal-engine"
-version = "0.1.0"
+version = "0.3.0"
 description = "AI-powered proposal generator and multi-model peer reviewer for FCT PTDC 2025"
 readme = "README.md"
 license = {text = "MIT"}
@@ -22,12 +22,9 @@ dependencies = [
     "pydantic-settings==2.6.1",
     # --- Document Generation ---
     "python-docx==1.2.0",
-    "openpyxl==3.1.5",
     "jinja2==3.1.6",
     # --- Research & Data ---
     "httpx==0.28.1",
-    "pybliometrics==4.4.1",
-    "scholarly==1.7.11",
     # --- Utilities ---
     "pyyaml==6.0.2",
     "click==8.2.1",
