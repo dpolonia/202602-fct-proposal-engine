@@ -156,6 +156,37 @@ def _mock_generate_side_effect():
             if section in text:
                 return _mock_llm_response(_build_section_text(section, limit))
 
+        # Review-iterate: atomize/suggestions
+        if "atomize" in text or "suggestion" in text or "grading rubric" in text:
+            return _mock_llm_response(json.dumps([{
+                "id": "SUG-001", "source_reviewer": "mock",
+                "source_text": "Weak.", "issue": "Minor gap",
+                "recommended_fix": "Add detail", "criterion_tags": ["A1"],
+                "target_sections": ["state_of_art_objectives"],
+                "severity": "S1", "evidence_status": "E1",
+                "confidence": "C1", "effort": "F1",
+                "impact": "I1", "dependency": "D0",
+                "actionability": "A1", "acceptance_test": "Check",
+                "depends_on": [], "blocks": [],
+            }]))
+        # Review-iterate: consistency checks
+        if "consistency" in text and ("check" in text or "auditor" in text):
+            return _mock_llm_response(json.dumps([
+                {"check_name": "country_set_consistent", "passed": True, "details": "OK"},
+                {"check_name": "hypotheses_traceability", "passed": True, "details": "OK"},
+                {"check_name": "ethics_human_subjects_consistency", "passed": True, "details": "OK"},
+                {"check_name": "benchmarks_independence_min_package", "passed": True, "details": "OK"},
+            ]))
+        # Review-iterate: improvement report narrative
+        if "improvement report" in text or "executive summary" in text or "narrative" in text:
+            return _mock_llm_response(json.dumps({
+                "executive_summary": "Summary.",
+                "science_method_changes": "Changes.",
+                "feasibility_budget_changes": "Budget.",
+                "ethics_compliance_changes": "Ethics.",
+                "risk_register": "| # | Risk |\n|---|------|\n| 1 | None |",
+            }))
+
         # Default fallback
         return _mock_llm_response(f"Generated content for call {call_count}.")
 

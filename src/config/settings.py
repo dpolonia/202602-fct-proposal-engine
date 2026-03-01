@@ -139,6 +139,25 @@ class UserConfig:
         self.max_concurrent_reviews: int = pipe.get("max_concurrent_reviews", 4)
         self.save_intermediates: bool = pipe.get("save_intermediates", True)
 
+        # --- Review-Iterate (opt-in structured revision) ---
+        ri = pipe.get("review_iterate", {})
+        self.review_iterate_enabled: bool = ri.get("enabled", False)
+        self.review_iterate_max_suggestions: int = ri.get("max_suggestions", 20)
+        self.review_iterate_top_n: int = ri.get("top_n", 5)
+        self.review_iterate_include_trivial: bool = ri.get("include_trivial_fixes", True)
+        self.review_iterate_include_redline: bool = ri.get("include_redline", False)
+        self.review_iterate_consistency_checks: list[str] = ri.get(
+            "consistency_checks",
+            [
+                "country_set_consistent",
+                "hypotheses_traceability",
+                "ethics_human_subjects_consistency",
+                "benchmarks_independence_min_package",
+                "budget_totals_reconcile",
+                "timeline_ethics_gate",
+            ],
+        )
+
         # --- Scopus ---
         sc = raw.get("scopus", {})
         self.scopus_enabled: bool = sc.get("enabled", True)
@@ -153,6 +172,7 @@ class UserConfig:
         fmts = out.get("formats", {})
         self.out_json: bool = fmts.get("json", True)
         self.out_markdown: bool = fmts.get("markdown", True)
+        self.out_txt: bool = fmts.get("txt", False)
         self.out_docx: bool = fmts.get("docx", False)
         self.out_char_report: bool = fmts.get("char_report", True)
         self.include_review_narrative: bool = out.get("include_review_narrative", True)

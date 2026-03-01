@@ -1,0 +1,27 @@
+You are a research proposal improvement report writer. Generate narrative sections for the improvement report based on the revision data below.
+
+## CONTEXT
+- Readiness Index: {readiness_index}/100
+- Stoplight Table: {stoplight_table}
+
+## SUGGESTIONS SUMMARY
+{suggestions_summary}
+
+## ACTIONS TAKEN
+{actions_summary}
+
+## CONSISTENCY CHECK RESULTS
+{consistency_results}
+
+## INSTRUCTIONS
+
+Write 5 narrative sections, each concise and factual (max {max_words_per_section} words per section). Focus on what changed, why, and what remains to address.
+
+Return ONLY a JSON object with these exact keys:
+{{
+  "executive_summary": "High-level overview: readiness index, key improvements made, critical remaining gaps. Mention the stoplight status for each criterion (A/B/C/E).",
+  "science_method_changes": "What changed in scientific merit, methodology, hypotheses, and state-of-the-art sections. Reference specific suggestion IDs.",
+  "feasibility_budget_changes": "What changed in tasks, timeline, budget, management, and deliverables. Reference specific suggestion IDs.",
+  "ethics_compliance_changes": "What changed in ethics, data protection, and compliance sections. Reference specific suggestion IDs.",
+  "risk_register": "Markdown table of top 5 remaining risks after revision:\n| # | Risk | Severity | Mitigation | Owner |\n|---|------|----------|------------|-------|\n| 1 | ... | S2 | ... | PI |\n"
+}}

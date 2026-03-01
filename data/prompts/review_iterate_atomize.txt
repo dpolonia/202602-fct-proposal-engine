@@ -1,0 +1,86 @@
+You are an expert research proposal revision analyst. Your task is to extract, normalize, and grade ALL critiques from the peer-review feedback below into structured Suggestion Records.
+
+## GRADING RUBRIC
+
+### Severity (how serious is the issue?)
+- S3 = Disqualifying/Fatal — proposal cannot succeed without fixing this
+- S2 = Major — significant weakness that substantially lowers scores
+- S1 = Moderate — noticeable weakness, but proposal could still succeed
+- S0 = Minor — cosmetic or stylistic issue
+
+### Evidence Status (how well-supported is the critique?)
+- E2 = Explicit — reviewer cites specific text, data, or standards
+- E1 = Implicit — reasonable inference from proposal content
+- E0 = Speculative — no clear basis in the proposal
+
+### Confidence (reviewer confidence)
+- C2 = High — reviewer is clearly expert on this point
+- C1 = Medium — reviewer is reasonably informed
+- C0 = Low — reviewer is guessing or outside their expertise
+
+### Effort (to fix)
+- F3 = High redesign — requires rethinking major sections
+- F2 = Moderate rewrite — substantial text changes in 1-2 sections
+- F1 = Small edit — a paragraph or two needs revision
+- F0 = Trivial — fix a sentence, add a reference, correct a number
+
+### Impact (if fixed, how much does quality improve?)
+- I3 = Large uplift — transforms a weakness into a strength
+- I2 = Noticeable improvement — clearly raises criterion score
+- I1 = Minor improvement — marginal score benefit
+- I0 = Negligible — no real score impact
+
+### Dependency (does fixing this unlock other fixes?)
+- D2 = Unlocks multiple downstream fixes
+- D1 = Unlocks one other fix
+- D0 = Independent — can be fixed in isolation
+
+### Actionability (how clear are the steps to fix?)
+- A2 = Fully actionable — clear, concrete steps
+- A1 = Partially actionable — direction is clear but details need interpretation
+- A0 = Vague — no clear path to fix
+
+## VALID SECTIONS
+{valid_sections}
+
+## VALID CRITERIA
+{valid_criteria}
+
+## REVIEWER FEEDBACK
+{reviewer_feedback}
+
+## INSTRUCTIONS
+
+1. Extract EVERY distinct critique, weakness, suggestion, and revision request from ALL reviewers AND the consensus priority_revisions.
+2. Normalize each into a 1-2 line "issue" statement.
+3. Assign grades using the rubric above.
+4. Provide a concrete "recommended_fix" for each.
+5. Write a testable "acceptance_test" for each (how to verify the fix was applied).
+6. Map each to target_sections (proposal field names) and criterion_tags.
+7. Identify dependencies between suggestions (depends_on, blocks).
+8. Deduplicate: if multiple reviewers raise the same issue, merge into one suggestion citing all source reviewers.
+9. Return at most {max_suggestions} suggestions, prioritizing higher severity.
+10. Assign IDs sequentially: SUG-001, SUG-002, etc.
+
+Return ONLY a JSON array of objects with these exact fields:
+[
+  {{
+    "id": "SUG-001",
+    "source_reviewer": "reviewer_id (or 'consensus' or 'reviewer1, reviewer2' if merged)",
+    "source_text": "exact quote or close paraphrase from the review",
+    "issue": "normalized 1-2 line critique",
+    "recommended_fix": "concrete steps to address this",
+    "criterion_tags": ["A1", "C"],
+    "target_sections": ["research_plan_methods"],
+    "severity": "S2",
+    "evidence_status": "E2",
+    "confidence": "C2",
+    "effort": "F2",
+    "impact": "I3",
+    "dependency": "D0",
+    "actionability": "A2",
+    "acceptance_test": "how to verify this was fixed",
+    "depends_on": [],
+    "blocks": ["SUG-003"]
+  }}
+]

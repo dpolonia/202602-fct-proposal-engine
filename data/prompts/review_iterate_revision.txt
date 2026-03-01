@@ -1,0 +1,20 @@
+Revise the '{section}' section of this research proposal based on the structured suggestions below.
+
+## CURRENT TEXT ({current_len} chars, hard limit {limit} chars)
+{current_text}
+
+## SUGGESTIONS TO ADDRESS
+{suggestions_for_section}
+
+## ACCEPTANCE TESTS (your revision MUST pass these)
+{acceptance_tests}
+
+## RULES
+1. Preserve all strengths and content not targeted by suggestions.
+2. Address each suggestion with ID tracking — your changes must pass the acceptance tests.
+3. Stay strictly within {limit} characters. Plain text only.
+4. Do NOT add new claims not supported by the original text or suggestions.
+5. Maintain the same academic tone and structural flow.
+6. If a suggestion cannot be fully addressed within the character limit, partially address it and note the constraint.
+
+Return ONLY the revised text (no JSON, no explanation, no markdown fences).

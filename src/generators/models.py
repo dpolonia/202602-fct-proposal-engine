@@ -5,6 +5,8 @@ Data models for the entire proposal lifecycle:
 
 from __future__ import annotations
 
+from enum import Enum
+
 from pydantic import BaseModel, Field
 
 from src.config.fct_constants import DeliverableType, ProjectType
@@ -241,3 +243,134 @@ class ConsensusReport(BaseModel):
     priority_revisions: list[str] = Field(default_factory=list)
     panel_decision: str = "major_revision"
     panel_narrative: str = ""
+
+
+# =============================================================================
+# FCT-REVIEW-ITERATE v1 — Grading Enums & Data Models
+# =============================================================================
+
+class Severity(str, Enum):
+    """S3=Disqualifying/Fatal, S2=Major, S1=Moderate, S0=Minor."""
+    S3 = "S3"  # -15 readiness
+    S2 = "S2"  # -8 readiness
+    S1 = "S1"  # -3 readiness
+    S0 = "S0"  # -1 readiness
+
+
+class EvidenceStatus(str, Enum):
+    """How well the critique is supported by evidence."""
+    E2 = "E2"  # Explicit — direct quote or data
+    E1 = "E1"  # Implicit — reasonable inference
+    E0 = "E0"  # Speculative — no clear basis
+
+
+class Confidence(str, Enum):
+    """Reviewer confidence in the critique."""
+    C2 = "C2"  # High
+    C1 = "C1"  # Medium
+    C0 = "C0"  # Low
+
+
+class Effort(str, Enum):
+    """Estimated effort to address the suggestion."""
+    F3 = "F3"  # High redesign
+    F2 = "F2"  # Moderate rewrite
+    F1 = "F1"  # Small edit
+    F0 = "F0"  # Trivial fix
+
+
+class Impact(str, Enum):
+    """Expected impact on proposal quality if addressed."""
+    I3 = "I3"  # Large uplift
+    I2 = "I2"  # Noticeable improvement
+    I1 = "I1"  # Minor improvement
+    I0 = "I0"  # Negligible
+
+
+class Dependency(str, Enum):
+    """Whether fixing this unlocks other fixes."""
+    D2 = "D2"  # Unlocks multiple downstream fixes
+    D1 = "D1"  # Unlocks one other fix
+    D0 = "D0"  # Independent
+
+
+class Actionability(str, Enum):
+    """How actionable the suggestion is."""
+    A2 = "A2"  # Fully actionable — clear steps
+    A1 = "A1"  # Partially actionable — needs interpretation
+    A0 = "A0"  # Vague — no clear steps
+
+
+SEVERITY_PENALTY = {
+    Severity.S3: 15,
+    Severity.S2: 8,
+    Severity.S1: 3,
+    Severity.S0: 1,
+}
+
+
+class SuggestionRecord(BaseModel):
+    """Atomized, graded critique from a reviewer."""
+    id: str = ""                            # SUG-001, SUG-002, ...
+    source_reviewer: str = ""               # reviewer_id
+    source_text: str = ""                   # original critique quote
+    issue: str = ""                         # 1-2 line normalized critique
+    recommended_fix: str = ""               # concrete steps
+    criterion_tags: list[str] = Field(default_factory=list)   # ["A1", "C"]
+    target_sections: list[str] = Field(default_factory=list)  # proposal field names
+    severity: Severity = Severity.S1
+    evidence_status: EvidenceStatus = EvidenceStatus.E1
+    confidence: Confidence = Confidence.C1
+    effort: Effort = Effort.F1
+    impact: Impact = Impact.I1
+    dependency: Dependency = Dependency.D0
+    actionability: Actionability = Actionability.A1
+    acceptance_test: str = ""               # how to verify fixed
+    depends_on: list[str] = Field(default_factory=list)   # SUG-xxx IDs
+    blocks: list[str] = Field(default_factory=list)       # SUG-xxx IDs
+
+
+class SuggestionAction(BaseModel):
+    """Record of what was done with a suggestion during revision."""
+    suggestion_id: str = ""
+    action: str = "deferred"                # adopted | partially_adopted | deferred | not_adopted
+    edit_summary: str = ""
+    section_modified: str = ""
+    before_text_snippet: str = ""           # first 200 chars before
+    after_text_snippet: str = ""            # first 200 chars after
+    acceptance_test_result: str = "Not yet"  # Pass | Not yet | Deferred
+    reason_if_not_adopted: str = ""
+
+
+class ConsistencyCheck(BaseModel):
+    """Result of a single consistency check."""
+    check_name: str = ""                    # e.g. "budget_totals_reconcile"
+    passed: bool = True
+    details: str = ""
+    auto_fixed: bool = False
+
+
+class StoplightEntry(BaseModel):
+    """Stoplight status for one evaluation criterion."""
+    criterion: str = ""                     # A, B, C, E
+    color: str = "green"                    # green, amber, red
+    s3_count: int = 0
+    s2_count: int = 0
+    rationale: str = ""
+
+
+class ImprovementReport(BaseModel):
+    """Full improvement report produced after each review-iterate cycle."""
+    version: int = 0
+    timestamp: str = ""
+    readiness_index: float = 0.0            # 0-100
+    stoplight: list[StoplightEntry] = Field(default_factory=list)
+    all_suggestions: list[SuggestionRecord] = Field(default_factory=list)
+    actions: list[SuggestionAction] = Field(default_factory=list)
+    consistency_checks: list[ConsistencyCheck] = Field(default_factory=list)
+    top5_ids: list[str] = Field(default_factory=list)
+    executive_summary: str = ""
+    science_method_changes: str = ""
+    feasibility_budget_changes: str = ""
+    ethics_compliance_changes: str = ""
+    risk_register: str = ""                 # markdown table of top-5 risks

@@ -1,0 +1,60 @@
+You are a research proposal consistency auditor. Evaluate the following proposal sections for internal consistency across four checks. Return your results as a JSON array.
+
+## PROPOSAL SECTIONS
+
+### Abstract (EN)
+{abstract_en}
+
+### Abstract (PT)
+{abstract_pt}
+
+### State of the Art & Objectives
+{state_of_art}
+
+### Research Plan & Methods
+{research_plan}
+
+### Tasks Summary
+{tasks_summary}
+
+### Ethics
+{ethics_text}
+
+### Management
+{management_text}
+
+## CHECKS TO PERFORM
+
+1. **country_set_consistent**: Verify that country/region references are consistent across abstract, state of art, and research plan. Flag if a country is mentioned in one section but contradicted or absent where expected.
+
+2. **hypotheses_traceability**: Verify that every hypothesis or research question stated in the objectives appears in at least one task description and is testable via at least one deliverable or milestone. Flag orphaned hypotheses.
+
+3. **ethics_human_subjects_consistency**: If the research plan mentions human subjects, surveys, interviews, personal data, or clinical work, verify the ethics section addresses these. Flag if ethics section is silent on activities that clearly require ethical review.
+
+4. **benchmarks_independence_min_package**: Verify that benchmarks, baselines, or comparison points mentioned in the research plan are independent (not self-referential) and that the minimum viable package of results is defined. Flag if all baselines come from the same team or if no minimum package is stated.
+
+## OUTPUT FORMAT
+
+Return ONLY a JSON array of exactly 4 objects:
+[
+  {{
+    "check_name": "country_set_consistent",
+    "passed": true,
+    "details": "Explanation of finding"
+  }},
+  {{
+    "check_name": "hypotheses_traceability",
+    "passed": false,
+    "details": "RQ3 (policy impact) has no corresponding task or deliverable"
+  }},
+  {{
+    "check_name": "ethics_human_subjects_consistency",
+    "passed": true,
+    "details": "Ethics section covers all identified human-subject activities"
+  }},
+  {{
+    "check_name": "benchmarks_independence_min_package",
+    "passed": false,
+    "details": "All baselines reference PI's own prior work; no independent benchmark defined"
+  }}
+]

@@ -27,10 +27,12 @@ class Pipeline:
         generator: ProposalGenerator | None = None,
         panel: ReviewPanel | None = None,
         reviser: RevisionEngine | None = None,
+        review_iterate_engine: object | None = None,
     ):
         self.generator = generator or ProposalGenerator()
         self.panel = panel or ReviewPanel()
         self.reviser = reviser or RevisionEngine()
+        self.review_iterate = review_iterate_engine
 
     @staticmethod
     def _setup_output_dirs(base: Path) -> dict[str, Path]:
@@ -38,15 +40,17 @@ class Pipeline:
 
         Structure:
             base/
-            ├── proposals/    v1-vN .json+.txt, final_proposal .json+.txt+.docx
-            ├── reviews/      v1-vN .json+.txt, final_review.docx
-            ├── drafts/       original_draft.yaml, draft_pre_vN.yaml, diffs, change logs
-            └── summary/      proposal_summary .md+.docx, char_report .json+.txt
+            ├── proposals/      v1-vN .json+.txt, final_proposal .json+.txt+.docx
+            ├── reviews/        v1-vN .json+.txt, final_review.docx
+            ├── drafts/         original_draft.yaml, draft_pre_vN.yaml, diffs, change logs
+            ├── improvements/   application_vN.md, improvement_report_vN.md (review-iterate)
+            └── summary/        proposal_summary .md+.docx, char_report .json+.txt
         """
         dirs = {
             "proposals": base / "proposals",
             "reviews": base / "reviews",
             "drafts": base / "drafts",
+            "improvements": base / "improvements",
             "summary": base / "summary",
         }
         for d in dirs.values():
@@ -68,6 +72,7 @@ class Pipeline:
 
         history: list[dict] = []
         draft_changes_history: list[dict] = []
+        improvement_reports: list = []
         consensus: ConsensusReport | None = None
         proposal: Proposal | None = None
         draft_updater = DraftUpdater()
@@ -135,7 +140,23 @@ class Pipeline:
                     })
 
                     # --- Revise proposal ---
-                    proposal = await self.reviser.revise(proposal, consensus)
+                    if cfg.review_iterate_enabled:
+                        if self.review_iterate is None:
+                            from src.reviewers.review_iterate import ReviewIterateEngine
+                            self.review_iterate = ReviewIterateEngine()
+                        proposal, improvement_report = await self.review_iterate.revise(
+                            proposal, consensus, version=version,
+                            draft=draft, output_dir=dirs["improvements"],
+                        )
+                        improvement_reports.append(improvement_report)
+                        # Enrich history entry
+                        history[-1]["readiness_index"] = improvement_report.readiness_index
+                        history[-1]["stoplight"] = [
+                            {"criterion": s.criterion, "color": s.color}
+                            for s in improvement_report.stoplight
+                        ]
+                    else:
+                        proposal = await self.reviser.revise(proposal, consensus)
                     if cfg.save_intermediates:
                         self._save(
                             proposal,
@@ -190,6 +211,7 @@ class Pipeline:
             "final_review": consensus,
             "history": history,
             "draft_changes": draft_changes_history,
+            "improvement_reports": improvement_reports,
             "output_dir": str(out),
         }
 
