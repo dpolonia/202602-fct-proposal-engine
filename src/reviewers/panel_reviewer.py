@@ -272,6 +272,9 @@ class RevisionEngine:
             new = resp.text.strip()
             if len(new) > limit:
                 new = safe_truncate(new, limit)
+            elif len(new) > target:
+                # Under hard limit but in buffer zone — ensure clean sentence ending
+                new = safe_truncate(new, limit)
             setattr(revised, section, new)
             logger.info(f"  Revised '{section}': {len(new)}/{limit} chars")
 

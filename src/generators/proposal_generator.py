@@ -147,6 +147,9 @@ class ProposalGenerator:
         text = resp.text.strip()
         if len(text) > limit:
             text = await self._trim(text, limit, section)
+        # Ensure text doesn't end mid-sentence even when under the hard limit
+        if len(text) > target:
+            text = safe_truncate(text, limit)
         logger.info(f"  {section}: {len(text)}/{limit} chars")
         return text
 
