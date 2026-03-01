@@ -20,12 +20,14 @@ from src.generators.models import (
     Confidence,
     ConsensusReport,
     ConsistencyCheck,
+    CostSummary,
     Dependency,
     DraftIdea,
     Effort,
     EvidenceStatus,
     Impact,
     ImprovementReport,
+    LLMCallRecord,
     Proposal,
     Severity,
     StoplightEntry,
@@ -33,7 +35,8 @@ from src.generators.models import (
     SuggestionRecord,
     SEVERITY_PENALTY,
 )
-from src.utils.llm_client import BaseLLMClient, get_llm_for_role
+from src.config.llm_pricing import estimate_cost
+from src.utils.llm_client import BaseLLMClient, LLMResponse, get_llm_for_role
 from src.utils.prompt_loader import load_prompt_template
 from src.utils.text_utils import safe_limit, safe_truncate
 
@@ -97,6 +100,45 @@ def _extract_json_from_text(text: str) -> str:
 
 
 # =============================================================================
+# Cost Tracker
+# =============================================================================
+
+class CostTracker:
+    """Collects LLMResponse metadata from each call site and computes costs."""
+
+    def __init__(self) -> None:
+        self.records: list[LLMCallRecord] = []
+
+    def record(self, resp: LLMResponse, call_id: str, step: str) -> None:
+        """Record token usage from an LLMResponse."""
+        cost = estimate_cost(resp.model, resp.input_tokens, resp.output_tokens)
+        self.records.append(LLMCallRecord(
+            call_id=call_id,
+            step=step,
+            model=resp.model,
+            provider=resp.provider.value,
+            input_tokens=resp.input_tokens,
+            output_tokens=resp.output_tokens,
+            total_tokens=resp.input_tokens + resp.output_tokens,
+            cost_usd=cost,
+            timestamp=datetime.now(timezone.utc).isoformat(),
+        ))
+
+    def summarize(self) -> CostSummary:
+        """Aggregate all records into a CostSummary."""
+        summary = CostSummary()
+        for r in self.records:
+            summary.total_input_tokens += r.input_tokens
+            summary.total_output_tokens += r.output_tokens
+            summary.total_tokens += r.total_tokens
+            summary.total_cost_usd += r.cost_usd
+            summary.by_step[r.step] = summary.by_step.get(r.step, 0) + r.cost_usd
+            summary.by_model[r.model] = summary.by_model.get(r.model, 0) + r.cost_usd
+        summary.calls = list(self.records)
+        return summary
+
+
+# =============================================================================
 # Class 1: CritiqueAtomizer
 # =============================================================================
 
@@ -110,6 +152,7 @@ class CritiqueAtomizer:
         self,
         consensus: ConsensusReport,
         proposal: Proposal,
+        tracker: CostTracker | None = None,
     ) -> list[SuggestionRecord]:
         """Extract all critiques from review feedback, grade them, and return SuggestionRecords.
 
@@ -130,6 +173,8 @@ class CritiqueAtomizer:
         resp = await self.llm.generate(
             prompt, max_tokens=8000, temperature=0.2,
         )
+        if tracker:
+            tracker.record(resp, call_id="atomize", step="atomize")
 
         suggestions = self._parse_suggestions(resp.text)
         suggestions = self._deduplicate(suggestions)
@@ -292,6 +337,7 @@ class ConsistencyChecker:
         proposal: Proposal,
         draft: DraftIdea,
         enabled_checks: list[str],
+        tracker: CostTracker | None = None,
     ) -> list[ConsistencyCheck]:
         """Run enabled consistency checks. Cost: 0-1 LLM calls."""
         results: list[ConsistencyCheck] = []
@@ -315,7 +361,7 @@ class ConsistencyChecker:
         ]
 
         if llm_checks:
-            llm_results = await self._run_llm_checks(proposal)
+            llm_results = await self._run_llm_checks(proposal, tracker=tracker)
             # Only include checks that were requested
             for check in llm_results:
                 if check.check_name in llm_checks:
@@ -388,7 +434,9 @@ class ConsistencyChecker:
             ),
         )
 
-    async def _run_llm_checks(self, proposal: Proposal) -> list[ConsistencyCheck]:
+    async def _run_llm_checks(
+        self, proposal: Proposal, tracker: CostTracker | None = None,
+    ) -> list[ConsistencyCheck]:
         """Run the 4 LLM-based consistency checks in a single batched call."""
         tasks_summary = "\n".join(
             f"T{t.number}: {t.denomination} — {t.description[:300]}"
@@ -406,6 +454,8 @@ class ConsistencyChecker:
         )
 
         resp = await self.llm.generate(prompt, max_tokens=3000, temperature=0.1)
+        if tracker:
+            tracker.record(resp, call_id="consistency_llm", step="consistency")
 
         json_str = _extract_json_from_text(resp.text)
         try:
@@ -471,9 +521,13 @@ class ReviewIterateEngine:
         """
         logger.info(f"ReviewIterate v{version}: starting 6-step revision process")
 
+        tracker = CostTracker()
+
         # Steps 1-3: Atomize + Grade + Rank
         logger.info("  Step 1-3: Atomizing, grading, and ranking critiques...")
-        all_suggestions = await self.atomizer.atomize_and_grade(consensus, proposal)
+        all_suggestions = await self.atomizer.atomize_and_grade(
+            consensus, proposal, tracker=tracker,
+        )
 
         # Filter out suggestions already addressed in prior iterations
         if self._prior_ids:
@@ -508,7 +562,7 @@ class ReviewIterateEngine:
             ]
             to_apply.extend(trivial)
 
-        revised, actions = await self._apply_fixes(proposal, to_apply, ranked)
+        revised, actions = await self._apply_fixes(proposal, to_apply, ranked, tracker=tracker)
 
         # Track applied suggestion IDs for cross-iteration dedup
         for a in actions:
@@ -519,12 +573,14 @@ class ReviewIterateEngine:
         logger.info("  Step 6: Running consistency checks...")
         checks = await self.checker.run_checks(
             revised, draft, cfg.review_iterate_consistency_checks,
+            tracker=tracker,
         )
 
         # Step 5: Build improvement report
         logger.info("  Step 5: Building improvement report...")
         report = await self._build_report(
             version, ranked, actions, checks, consensus, proposal, revised,
+            tracker=tracker,
         )
 
         # Compute readiness index & stoplight (pure Python)
@@ -532,6 +588,11 @@ class ReviewIterateEngine:
         report.stoplight = self._compute_stoplight(ranked)
         report.top5_ids = top_ids
         report.all_suggestions = ranked
+
+        # Attach cost tracking data
+        cost_summary = tracker.summarize()
+        report.cost_summary = cost_summary
+        report.llm_call_log = list(tracker.records)
 
         logger.info(
             f"  Readiness index: {report.readiness_index:.1f}/100, "
@@ -549,6 +610,7 @@ class ReviewIterateEngine:
         proposal: Proposal,
         to_apply: list[SuggestionRecord],
         all_ranked: list[SuggestionRecord],
+        tracker: CostTracker | None = None,
     ) -> tuple[Proposal, list[SuggestionAction]]:
         """Apply suggestions batched by target section. 1 LLM call per section."""
         revised = proposal.model_copy(deep=True)
@@ -603,6 +665,8 @@ class ReviewIterateEngine:
                 prompt, max_tokens=limit * 2,
                 temperature=cfg.revision.temperature,
             )
+            if tracker:
+                tracker.record(resp, call_id=f"revise_{section}", step="revise")
             new_text = resp.text.strip()
 
             if len(new_text) > limit:
@@ -651,6 +715,7 @@ class ReviewIterateEngine:
         consensus: ConsensusReport,
         original: Proposal,
         revised: Proposal,
+        tracker: CostTracker | None = None,
     ) -> ImprovementReport:
         """Build the improvement report with LLM-generated narratives. 1 LLM call."""
         readiness = self._compute_readiness(all_suggestions, actions)
@@ -681,6 +746,8 @@ class ReviewIterateEngine:
         )
 
         resp = await self._llm.generate(prompt, max_tokens=4000, temperature=0.3)
+        if tracker:
+            tracker.record(resp, call_id="narrative", step="narrative")
 
         narratives = self._parse_narratives(resp.text)
 
@@ -858,6 +925,7 @@ class ReviewIterateEngine:
     ) -> None:
         """Save improvement report and revised proposal to disk."""
         from src.utils.txt_formatter import (
+            cost_report_to_md,
             improvement_report_to_md,
             proposal_to_application_md,
         )
@@ -884,3 +952,17 @@ class ReviewIterateEngine:
             report.model_dump_json(indent=2), encoding="utf-8",
         )
         logger.info(f"  Saved: {json_path}")
+
+        # Cost report (JSON + markdown)
+        if report.cost_summary:
+            cost_json_path = output_dir / f"llm_cost_report_v{version}.json"
+            cost_json_path.write_text(
+                report.cost_summary.model_dump_json(indent=2), encoding="utf-8",
+            )
+            logger.info(f"  Saved: {cost_json_path}")
+
+            cost_md_path = output_dir / f"llm_cost_report_v{version}.md"
+            cost_md_path.write_text(
+                cost_report_to_md(report.cost_summary, version), encoding="utf-8",
+            )
+            logger.info(f"  Saved: {cost_md_path}")

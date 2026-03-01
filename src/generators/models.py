@@ -359,6 +359,30 @@ class StoplightEntry(BaseModel):
     rationale: str = ""
 
 
+class LLMCallRecord(BaseModel):
+    """Record of a single LLM API call with token counts and cost."""
+    call_id: str = ""                       # e.g. "atomize", "revise_state_of_art"
+    step: str = ""                          # "atomize", "revise", "consistency", "narrative"
+    model: str = ""
+    provider: str = ""
+    input_tokens: int = 0
+    output_tokens: int = 0
+    total_tokens: int = 0
+    cost_usd: float = 0.0
+    timestamp: str = ""
+
+
+class CostSummary(BaseModel):
+    """Aggregate cost summary for one review-iterate cycle."""
+    total_input_tokens: int = 0
+    total_output_tokens: int = 0
+    total_tokens: int = 0
+    total_cost_usd: float = 0.0
+    calls: list[LLMCallRecord] = Field(default_factory=list)
+    by_step: dict[str, float] = Field(default_factory=dict)   # step -> cost_usd
+    by_model: dict[str, float] = Field(default_factory=dict)  # model -> cost_usd
+
+
 class ImprovementReport(BaseModel):
     """Full improvement report produced after each review-iterate cycle."""
     version: int = 0
@@ -374,3 +398,5 @@ class ImprovementReport(BaseModel):
     feasibility_budget_changes: str = ""
     ethics_compliance_changes: str = ""
     risk_register: str = ""                 # markdown table of top-5 risks
+    cost_summary: CostSummary | None = None
+    llm_call_log: list[LLMCallRecord] = Field(default_factory=list)

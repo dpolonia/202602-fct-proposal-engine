@@ -5,7 +5,7 @@ Produces human-readable plain-text representations of pipeline outputs.
 
 from __future__ import annotations
 
-from src.generators.models import ConsensusReport, ImprovementReport, Proposal
+from src.generators.models import ConsensusReport, CostSummary, ImprovementReport, Proposal
 
 
 def proposal_to_txt(proposal: Proposal) -> str:
@@ -518,6 +518,127 @@ def improvement_report_to_md(report: ImprovementReport, version: int) -> str:
     lines.append("## 12. Post-revision Risk Register")
     lines.append("")
     lines.append(report.risk_register or "No risk register generated.")
+    lines.append("")
+
+    # 13. LLM Usage & Cost Summary
+    if report.cost_summary:
+        cs = report.cost_summary
+        lines.append("## 13. LLM Usage & Cost Summary")
+        lines.append("")
+        lines.append(f"**Total tokens:** {cs.total_tokens:,} "
+                     f"(input: {cs.total_input_tokens:,}, output: {cs.total_output_tokens:,})")
+        lines.append(f"**Estimated cost:** ${cs.total_cost_usd:.4f} USD")
+        lines.append("")
+        lines.append("### Cost by step")
+        lines.append("")
+        lines.append("| Step | Cost (USD) |")
+        lines.append("|------|-----------|")
+        for step, cost in sorted(cs.by_step.items()):
+            lines.append(f"| {step} | ${cost:.4f} |")
+        lines.append("")
+        lines.append("### Cost by model")
+        lines.append("")
+        lines.append("| Model | Cost (USD) |")
+        lines.append("|-------|-----------|")
+        for model, cost in sorted(cs.by_model.items()):
+            lines.append(f"| {model} | ${cost:.4f} |")
+        lines.append("")
+
+    return "\n".join(lines)
+
+
+def cost_report_to_md(summary: CostSummary, version: int) -> str:
+    """Render a detailed LLM traffic & cost report as markdown."""
+    from src.config.llm_pricing import LLM_PRICING, DEFAULT_PRICING
+
+    lines: list[str] = []
+
+    lines.append(f"# LLM Traffic & Cost Report — v{version}")
+    lines.append("")
+
+    # Summary
+    lines.append("## Summary")
+    lines.append("")
+    lines.append(f"- **Total calls:** {len(summary.calls)}")
+    lines.append(f"- **Total tokens:** {summary.total_tokens:,} "
+                 f"(input: {summary.total_input_tokens:,}, "
+                 f"output: {summary.total_output_tokens:,})")
+    lines.append(f"- **Estimated cost:** ${summary.total_cost_usd:.4f} USD")
+    lines.append("")
+
+    # Per-Call Detail
+    lines.append("## Per-Call Detail")
+    lines.append("")
+    lines.append(
+        "| # | Call ID | Step | Model | Provider | Input Tok | Output Tok "
+        "| Total | Cost (USD) | Timestamp |"
+    )
+    lines.append(
+        "|---|---------|------|-------|----------|-----------|------------|"
+        "-------|------------|-----------|"
+    )
+    for i, c in enumerate(summary.calls, 1):
+        lines.append(
+            f"| {i} | {c.call_id} | {c.step} | {c.model} | {c.provider} "
+            f"| {c.input_tokens:,} | {c.output_tokens:,} | {c.total_tokens:,} "
+            f"| ${c.cost_usd:.4f} | {c.timestamp} |"
+        )
+    lines.append("")
+
+    # Aggregation by Step
+    lines.append("## Aggregation by Step")
+    lines.append("")
+    lines.append("| Step | Calls | Input Tok | Output Tok | Cost (USD) | % of Total |")
+    lines.append("|------|-------|-----------|------------|------------|------------|")
+
+    step_stats: dict[str, dict[str, int | float]] = {}
+    for c in summary.calls:
+        s = step_stats.setdefault(c.step, {"calls": 0, "input": 0, "output": 0, "cost": 0.0})
+        s["calls"] += 1
+        s["input"] += c.input_tokens
+        s["output"] += c.output_tokens
+        s["cost"] += c.cost_usd
+
+    for step, s in sorted(step_stats.items()):
+        pct = (s["cost"] / summary.total_cost_usd * 100) if summary.total_cost_usd else 0
+        lines.append(
+            f"| {step} | {s['calls']} | {s['input']:,} | {s['output']:,} "
+            f"| ${s['cost']:.4f} | {pct:.1f}% |"
+        )
+    lines.append("")
+
+    # Aggregation by Model
+    lines.append("## Aggregation by Model")
+    lines.append("")
+    lines.append("| Model | Calls | Input Tok | Output Tok | Cost (USD) | % of Total |")
+    lines.append("|-------|-------|-----------|------------|------------|------------|")
+
+    model_stats: dict[str, dict[str, int | float]] = {}
+    for c in summary.calls:
+        m = model_stats.setdefault(c.model, {"calls": 0, "input": 0, "output": 0, "cost": 0.0})
+        m["calls"] += 1
+        m["input"] += c.input_tokens
+        m["output"] += c.output_tokens
+        m["cost"] += c.cost_usd
+
+    for model, m in sorted(model_stats.items()):
+        pct = (m["cost"] / summary.total_cost_usd * 100) if summary.total_cost_usd else 0
+        lines.append(
+            f"| {model} | {m['calls']} | {m['input']:,} | {m['output']:,} "
+            f"| ${m['cost']:.4f} | {pct:.1f}% |"
+        )
+    lines.append("")
+
+    # Pricing Table Used
+    lines.append("## Pricing Table Used")
+    lines.append("")
+    lines.append("| Model Prefix | Input ($/1M) | Output ($/1M) |")
+    lines.append("|--------------|-------------|--------------|")
+    for prefix, (inp, out) in sorted(LLM_PRICING.items()):
+        lines.append(f"| {prefix} | ${inp:.3f} | ${out:.3f} |")
+    lines.append(
+        f"| *(default fallback)* | ${DEFAULT_PRICING[0]:.3f} | ${DEFAULT_PRICING[1]:.3f} |"
+    )
     lines.append("")
 
     return "\n".join(lines)

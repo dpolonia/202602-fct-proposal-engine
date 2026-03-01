@@ -16,6 +16,7 @@ from src.generators.models import (
     Confidence,
     ConsensusReport,
     ConsistencyCheck,
+    CostSummary,
     CriterionScore,
     Dependency,
     DraftIdea,
@@ -23,6 +24,7 @@ from src.generators.models import (
     EvidenceStatus,
     Impact,
     ImprovementReport,
+    LLMCallRecord,
     Proposal,
     ReviewReport,
     Severity,
@@ -1151,3 +1153,297 @@ class TestPipelineBackwardCompat:
         assert "improvement_reports" in result
         assert result["improvement_reports"] == []
         assert pipeline.review_iterate is None
+
+
+# =============================================================================
+# Tests: LLM Pricing
+# =============================================================================
+
+class TestLLMPricing:
+
+    def test_known_model_pricing(self):
+        from src.config.llm_pricing import get_pricing
+        # Full model ID should match by prefix
+        inp, out = get_pricing("claude-opus-4-20250514")
+        assert inp == 15.0
+        assert out == 75.0
+
+    def test_unknown_model_fallback(self):
+        from src.config.llm_pricing import get_pricing, DEFAULT_PRICING
+        result = get_pricing("some-unknown-model-xyz")
+        assert result == DEFAULT_PRICING
+
+    def test_estimate_cost_basic(self):
+        from src.config.llm_pricing import estimate_cost
+        # 1000 input + 500 output at claude-opus-4 prices (15/75 per 1M)
+        cost = estimate_cost("claude-opus-4-20250514", 1000, 500)
+        expected = (1000 * 15.0 + 500 * 75.0) / 1_000_000
+        assert abs(cost - expected) < 1e-10
+
+    def test_longest_prefix_wins(self):
+        from src.config.llm_pricing import get_pricing
+        # "gpt-4o-mini" should match "gpt-4o-mini" (0.15/0.60), not "gpt-4o" (2.50/10.0)
+        inp, out = get_pricing("gpt-4o-mini-2024-07-18")
+        assert inp == 0.15
+        assert out == 0.60
+
+    def test_estimate_cost_zero_tokens(self):
+        from src.config.llm_pricing import estimate_cost
+        cost = estimate_cost("claude-opus-4", 0, 0)
+        assert cost == 0.0
+
+
+# =============================================================================
+# Tests: CostTracker
+# =============================================================================
+
+class TestCostTracker:
+
+    def test_record_and_summarize(self):
+        from src.reviewers.review_iterate import CostTracker
+
+        tracker = CostTracker()
+
+        # Simulate 3 LLM responses
+        resp1 = LLMResponse(
+            text="atomized", model="claude-opus-4-20250514",
+            provider=LLMProvider.ANTHROPIC, input_tokens=5000, output_tokens=1000,
+        )
+        resp2 = LLMResponse(
+            text="revised", model="claude-opus-4-20250514",
+            provider=LLMProvider.ANTHROPIC, input_tokens=8000, output_tokens=2000,
+        )
+        resp3 = LLMResponse(
+            text="narrative", model="gpt-4o-mini-2024",
+            provider=LLMProvider.OPENAI, input_tokens=3000, output_tokens=500,
+        )
+
+        tracker.record(resp1, call_id="atomize", step="atomize")
+        tracker.record(resp2, call_id="revise_state_of_art", step="revise")
+        tracker.record(resp3, call_id="narrative", step="narrative")
+
+        summary = tracker.summarize()
+
+        assert summary.total_input_tokens == 16000
+        assert summary.total_output_tokens == 3500
+        assert summary.total_tokens == 19500
+        assert len(summary.calls) == 3
+        assert summary.total_cost_usd > 0
+
+        # by_step has 3 entries
+        assert "atomize" in summary.by_step
+        assert "revise" in summary.by_step
+        assert "narrative" in summary.by_step
+
+        # by_model has 2 entries (two different models)
+        assert "claude-opus-4-20250514" in summary.by_model
+        assert "gpt-4o-mini-2024" in summary.by_model
+
+    def test_empty_tracker(self):
+        from src.reviewers.review_iterate import CostTracker
+
+        tracker = CostTracker()
+        summary = tracker.summarize()
+
+        assert summary.total_input_tokens == 0
+        assert summary.total_output_tokens == 0
+        assert summary.total_tokens == 0
+        assert summary.total_cost_usd == 0.0
+        assert summary.calls == []
+        assert summary.by_step == {}
+        assert summary.by_model == {}
+
+
+# =============================================================================
+# Tests: Cost Report Markdown
+# =============================================================================
+
+class TestCostReportMarkdown:
+
+    def test_cost_report_has_all_sections(self):
+        from src.utils.txt_formatter import cost_report_to_md
+
+        summary = CostSummary(
+            total_input_tokens=10000,
+            total_output_tokens=2000,
+            total_tokens=12000,
+            total_cost_usd=0.225,
+            calls=[
+                LLMCallRecord(
+                    call_id="atomize", step="atomize",
+                    model="claude-opus-4-20250514", provider="anthropic",
+                    input_tokens=5000, output_tokens=1000, total_tokens=6000,
+                    cost_usd=0.15, timestamp="2026-03-01T00:00:00Z",
+                ),
+                LLMCallRecord(
+                    call_id="revise_abstract_en", step="revise",
+                    model="claude-opus-4-20250514", provider="anthropic",
+                    input_tokens=5000, output_tokens=1000, total_tokens=6000,
+                    cost_usd=0.075, timestamp="2026-03-01T00:01:00Z",
+                ),
+            ],
+            by_step={"atomize": 0.15, "revise": 0.075},
+            by_model={"claude-opus-4-20250514": 0.225},
+        )
+
+        md = cost_report_to_md(summary, version=1)
+
+        assert "# LLM Traffic & Cost Report" in md
+        assert "## Summary" in md
+        assert "## Per-Call Detail" in md
+        assert "## Aggregation by Step" in md
+        assert "## Aggregation by Model" in md
+        assert "## Pricing Table Used" in md
+        assert "atomize" in md
+        assert "claude-opus-4-20250514" in md
+        assert "$0.2250" in md
+
+
+# =============================================================================
+# Tests: Improvement Report Section 13
+# =============================================================================
+
+class TestImprovementReportCostSection:
+
+    def test_section_13_appears_in_md(self):
+        from src.utils.txt_formatter import improvement_report_to_md
+
+        report = ImprovementReport(
+            version=1,
+            timestamp="2026-03-01T00:00:00Z",
+            readiness_index=80.0,
+            stoplight=[
+                StoplightEntry(criterion="A", color="green"),
+                StoplightEntry(criterion="B", color="green"),
+                StoplightEntry(criterion="C", color="green"),
+                StoplightEntry(criterion="E", color="green"),
+            ],
+            cost_summary=CostSummary(
+                total_input_tokens=10000,
+                total_output_tokens=2000,
+                total_tokens=12000,
+                total_cost_usd=0.225,
+                by_step={"atomize": 0.15, "revise": 0.075},
+                by_model={"claude-opus-4": 0.225},
+            ),
+        )
+
+        md = improvement_report_to_md(report, version=1)
+
+        assert "## 13. LLM Usage & Cost Summary" in md
+        assert "12,000" in md  # total tokens formatted
+        assert "$0.2250" in md
+        assert "| atomize |" in md
+        assert "| revise |" in md
+        assert "| claude-opus-4 |" in md
+
+    def test_section_13_absent_when_no_cost_summary(self):
+        from src.utils.txt_formatter import improvement_report_to_md
+
+        report = ImprovementReport(
+            version=1,
+            timestamp="2026-03-01T00:00:00Z",
+            readiness_index=80.0,
+        )
+
+        md = improvement_report_to_md(report, version=1)
+        assert "## 13." not in md
+
+    @pytest.mark.asyncio
+    async def test_cost_files_saved_by_save_artifacts(self, tmp_path):
+        from src.reviewers.review_iterate import ReviewIterateEngine
+
+        mock_suggestions = json.dumps([{
+            "id": "SUG-001", "source_reviewer": "mock",
+            "source_text": "Weak.", "issue": "Methodology gaps",
+            "recommended_fix": "Add framework",
+            "criterion_tags": ["A1"],
+            "target_sections": ["state_of_art_objectives"],
+            "severity": "S2", "evidence_status": "E1",
+            "confidence": "C1", "effort": "F1",
+            "impact": "I2", "dependency": "D0",
+            "actionability": "A2",
+            "acceptance_test": "Framework present",
+            "depends_on": [], "blocks": [],
+        }])
+
+        mock_consistency = json.dumps([
+            {"check_name": "country_set_consistent", "passed": True, "details": "OK"},
+        ])
+
+        mock_narrative = json.dumps({
+            "executive_summary": "Summary.",
+            "science_method_changes": "Changes.",
+            "feasibility_budget_changes": "Budget.",
+            "ethics_compliance_changes": "Ethics.",
+            "risk_register": "| # | Risk |\n|---|------|\n| 1 | None |",
+        })
+
+        async def _side_effect(prompt="", system="", max_tokens=4096, temperature=0.3):
+            text = prompt.lower()
+            if "grading rubric" in text or "atomize" in text:
+                return LLMResponse(
+                    text=mock_suggestions, model="claude-opus-4-20250514",
+                    provider=LLMProvider.ANTHROPIC,
+                    input_tokens=5000, output_tokens=1000,
+                )
+            if "consistency" in text and "auditor" in text:
+                return LLMResponse(
+                    text=mock_consistency, model="claude-opus-4-20250514",
+                    provider=LLMProvider.ANTHROPIC,
+                    input_tokens=4000, output_tokens=800,
+                )
+            if "improvement report" in text or "narrative" in text:
+                return LLMResponse(
+                    text=mock_narrative, model="claude-opus-4-20250514",
+                    provider=LLMProvider.ANTHROPIC,
+                    input_tokens=3000, output_tokens=600,
+                )
+            return LLMResponse(
+                text="Revised section text with improvements." * 50,
+                model="claude-opus-4-20250514",
+                provider=LLMProvider.ANTHROPIC,
+                input_tokens=6000, output_tokens=1500,
+            )
+
+        mock_llm = AsyncMock()
+        mock_llm.generate = AsyncMock(side_effect=_side_effect)
+
+        with patch("src.reviewers.review_iterate.cfg") as mock_cfg:
+            mock_cfg.review_iterate_top_n = 5
+            mock_cfg.review_iterate_max_suggestions = 20
+            mock_cfg.review_iterate_include_trivial = True
+            mock_cfg.review_iterate_consistency_checks = [
+                "budget_totals_reconcile", "timeline_ethics_gate",
+            ]
+            mock_cfg.revision.temperature = 0.3
+
+            engine = ReviewIterateEngine(llm=mock_llm)
+            proposal = _make_proposal()
+            consensus = _make_consensus()
+            draft = _make_draft()
+
+            revised, report = await engine.revise(
+                proposal, consensus, version=1,
+                draft=draft, output_dir=tmp_path,
+            )
+
+        # Verify cost summary is populated
+        assert report.cost_summary is not None
+        assert report.cost_summary.total_tokens > 0
+        assert report.cost_summary.total_cost_usd > 0
+        assert len(report.llm_call_log) > 0
+
+        # Verify cost report files were written
+        assert (tmp_path / "llm_cost_report_v1.json").exists()
+        assert (tmp_path / "llm_cost_report_v1.md").exists()
+
+        # Verify JSON content is valid
+        cost_json = json.loads((tmp_path / "llm_cost_report_v1.json").read_text())
+        assert "total_cost_usd" in cost_json
+        assert cost_json["total_tokens"] > 0
+
+        # Verify MD has expected sections
+        cost_md = (tmp_path / "llm_cost_report_v1.md").read_text()
+        assert "## Summary" in cost_md
+        assert "## Per-Call Detail" in cost_md

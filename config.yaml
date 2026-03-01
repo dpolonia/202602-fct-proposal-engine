@@ -131,7 +131,7 @@ review_panel:
   - id: "llama_domain"
     enabled: true
     provider: "huggingface"
-    model: "meta-llama/Llama-3.1-70B-Instruct"
+    model: "meta-llama/Llama-3.3-70B-Instruct"
     # Qwen/Qwen2.5-72B-Instruct
     # deepseek-ai/DeepSeek-R1-0528
     perspective: "domain_expert"
