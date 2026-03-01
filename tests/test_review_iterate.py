@@ -12,6 +12,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from src.generators.models import (
+    SEVERITY_PENALTY,
     Actionability,
     Confidence,
     ConsensusReport,
@@ -31,14 +32,13 @@ from src.generators.models import (
     StoplightEntry,
     SuggestionAction,
     SuggestionRecord,
-    SEVERITY_PENALTY,
 )
-from src.utils.llm_client import LLMResponse, LLMProvider
-
+from src.utils.llm_client import LLMProvider, LLMResponse
 
 # =============================================================================
 # Fixtures
 # =============================================================================
+
 
 def _make_suggestion(
     id: str = "SUG-001",
@@ -94,21 +94,27 @@ def _make_consensus(score: float = 6.0, decision: str = "major_revision") -> Con
         overall_score=score,
         criterion_scores=[
             CriterionScore(
-                criterion="A", sub_criterion="A1", score=score,
+                criterion="A",
+                sub_criterion="A1",
+                score=score,
                 justification="Needs improvement.",
                 strengths=["Good structure"],
                 weaknesses=["Lacks rigour in methodology"],
                 suggestions=["Add formal hypothesis testing framework"],
             ),
             CriterionScore(
-                criterion="A", sub_criterion="A2", score=score + 0.5,
+                criterion="A",
+                sub_criterion="A2",
+                score=score + 0.5,
                 justification="Somewhat novel.",
                 strengths=["Novel approach"],
                 weaknesses=["Prior art coverage insufficient"],
                 suggestions=["Expand literature review"],
             ),
             CriterionScore(
-                criterion="C", sub_criterion="C", score=score - 0.5,
+                criterion="C",
+                sub_criterion="C",
+                score=score - 0.5,
                 justification="Feasibility concerns.",
                 strengths=["Clear timeline"],
                 weaknesses=["Budget mismatch with tasks"],
@@ -133,8 +139,8 @@ def _make_consensus(score: float = 6.0, decision: str = "major_revision") -> Con
 
 
 def _make_proposal() -> Proposal:
-    from src.generators.models import ProposalTask, TaskBudget, Deliverable, Milestone
     from src.config.fct_constants import DeliverableType
+    from src.generators.models import Deliverable, Milestone, ProposalTask, TaskBudget
 
     return Proposal(
         title_en="Test Proposal",
@@ -153,38 +159,58 @@ def _make_proposal() -> Proposal:
         contributions_society="Societal impact description." * 15,
         further_details="Additional details." * 20,
         team_cv_synopsis="Team CV synopsis." * 30,
-        ethics_justification="Ethics considerations including informed consent timeline and approval before month 3." * 10,
+        ethics_justification=(
+            "Ethics considerations including informed consent timeline and approval before month 3."
+        )
+        * 10,
         tasks=[
             ProposalTask(
-                number=1, denomination="Literature Review",
+                number=1,
+                denomination="Literature Review",
                 description="Conduct systematic literature review with participant interviews.",
-                person_months=4.0, start_month=1, duration_months=8,
+                person_months=4.0,
+                start_month=1,
+                duration_months=8,
                 budget=TaskBudget(human_resources=30000, missions_travel=5000),
             ),
             ProposalTask(
-                number=2, denomination="Data Collection",
+                number=2,
+                denomination="Data Collection",
                 description="Primary data collection and analysis.",
-                person_months=8.0, start_month=5, duration_months=12,
+                person_months=8.0,
+                start_month=5,
+                duration_months=12,
                 budget=TaskBudget(human_resources=50000, equipment=10000),
             ),
             ProposalTask(
-                number=3, denomination="Dissemination",
+                number=3,
+                denomination="Dissemination",
                 description="Results dissemination and publications.",
-                person_months=4.0, start_month=15, duration_months=6,
+                person_months=4.0,
+                start_month=15,
+                duration_months=6,
                 budget=TaskBudget(human_resources=15000, registrations_publications=5000),
             ),
         ],
         deliverables=[
-            Deliverable(code="D1.1", title="SLR Report", type=DeliverableType.REPORT,
-                        related_tasks=[1], due_month=6),
-            Deliverable(code="D2.1", title="Dataset", type=DeliverableType.DATASET,
-                        related_tasks=[2], due_month=14),
+            Deliverable(
+                code="D1.1",
+                title="SLR Report",
+                type=DeliverableType.REPORT,
+                related_tasks=[1],
+                due_month=6,
+            ),
+            Deliverable(
+                code="D2.1",
+                title="Dataset",
+                type=DeliverableType.DATASET,
+                related_tasks=[2],
+                due_month=14,
+            ),
         ],
         milestones=[
-            Milestone(code="M1", denomination="Framework Complete",
-                      related_tasks=[1], due_month=8),
-            Milestone(code="M2", denomination="Data Collected",
-                      related_tasks=[2], due_month=16),
+            Milestone(code="M1", denomination="Framework Complete", related_tasks=[1], due_month=8),
+            Milestone(code="M2", denomination="Data Collected", related_tasks=[2], due_month=16),
         ],
     )
 
@@ -192,15 +218,20 @@ def _make_proposal() -> Proposal:
 def _make_draft() -> DraftIdea:
     return DraftIdea(
         title="Test Research Idea",
-        research_topic="A comprehensive study of testing methodologies in software engineering " * 5,
+        research_topic=("A comprehensive study of testing methodologies in software engineering ")
+        * 5,
         research_questions=["RQ1: How effective are current testing methods?"],
     )
 
 
 def _mock_llm_response(text: str) -> LLMResponse:
     return LLMResponse(
-        text=text, model="mock-model", provider=LLMProvider.ANTHROPIC,
-        input_tokens=100, output_tokens=len(text), finish_reason="stop",
+        text=text,
+        model="mock-model",
+        provider=LLMProvider.ANTHROPIC,
+        input_tokens=100,
+        output_tokens=len(text),
+        finish_reason="stop",
     )
 
 
@@ -208,8 +239,8 @@ def _mock_llm_response(text: str) -> LLMResponse:
 # Unit Tests: Models
 # =============================================================================
 
-class TestSuggestionModels:
 
+class TestSuggestionModels:
     def test_suggestion_record_creation(self):
         sug = _make_suggestion()
         assert sug.id == "SUG-001"
@@ -249,21 +280,27 @@ class TestSuggestionModels:
 
     def test_consistency_check_creation(self):
         check = ConsistencyCheck(
-            check_name="budget_totals_reconcile", passed=True, details="OK.",
+            check_name="budget_totals_reconcile",
+            passed=True,
+            details="OK.",
         )
         assert check.passed is True
         assert check.auto_fixed is False
 
     def test_stoplight_entry_creation(self):
         entry = StoplightEntry(
-            criterion="A", color="green", s3_count=0, s2_count=0,
+            criterion="A",
+            color="green",
+            s3_count=0,
+            s2_count=0,
             rationale="No issues.",
         )
         assert entry.color == "green"
 
     def test_improvement_report_creation(self):
         report = ImprovementReport(
-            version=1, timestamp="2026-03-01T00:00:00Z",
+            version=1,
+            timestamp="2026-03-01T00:00:00Z",
             readiness_index=75.0,
         )
         assert report.version == 1
@@ -275,15 +312,17 @@ class TestSuggestionModels:
 # Unit Tests: Readiness Computation
 # =============================================================================
 
-class TestReadinessComputation:
 
+class TestReadinessComputation:
     def test_perfect_readiness_no_suggestions(self):
         from src.reviewers.review_iterate import ReviewIterateEngine
+
         score = ReviewIterateEngine._compute_readiness([], [])
         assert score == 100.0
 
     def test_s3_penalty(self):
         from src.reviewers.review_iterate import ReviewIterateEngine
+
         suggestions = [_make_suggestion(severity=Severity.S3)]
         actions = [_make_action(action="deferred")]
         score = ReviewIterateEngine._compute_readiness(suggestions, actions)
@@ -291,6 +330,7 @@ class TestReadinessComputation:
 
     def test_s2_penalty(self):
         from src.reviewers.review_iterate import ReviewIterateEngine
+
         suggestions = [_make_suggestion(severity=Severity.S2)]
         actions = [_make_action(action="deferred")]
         score = ReviewIterateEngine._compute_readiness(suggestions, actions)
@@ -298,6 +338,7 @@ class TestReadinessComputation:
 
     def test_s1_penalty(self):
         from src.reviewers.review_iterate import ReviewIterateEngine
+
         suggestions = [_make_suggestion(severity=Severity.S1)]
         actions = [_make_action(action="deferred")]
         score = ReviewIterateEngine._compute_readiness(suggestions, actions)
@@ -305,6 +346,7 @@ class TestReadinessComputation:
 
     def test_s0_penalty(self):
         from src.reviewers.review_iterate import ReviewIterateEngine
+
         suggestions = [_make_suggestion(severity=Severity.S0)]
         actions = [_make_action(action="deferred")]
         score = ReviewIterateEngine._compute_readiness(suggestions, actions)
@@ -312,6 +354,7 @@ class TestReadinessComputation:
 
     def test_adopted_no_penalty(self):
         from src.reviewers.review_iterate import ReviewIterateEngine
+
         suggestions = [_make_suggestion(severity=Severity.S3)]
         actions = [_make_action(action="adopted")]
         score = ReviewIterateEngine._compute_readiness(suggestions, actions)
@@ -319,6 +362,7 @@ class TestReadinessComputation:
 
     def test_partially_adopted_half_penalty(self):
         from src.reviewers.review_iterate import ReviewIterateEngine
+
         suggestions = [_make_suggestion(severity=Severity.S2)]
         actions = [_make_action(action="partially_adopted")]
         score = ReviewIterateEngine._compute_readiness(suggestions, actions)
@@ -326,9 +370,9 @@ class TestReadinessComputation:
 
     def test_a2_bonus_capped_at_10(self):
         from src.reviewers.review_iterate import ReviewIterateEngine
+
         suggestions = [
-            _make_suggestion(id=f"SUG-{i:03d}", actionability=Actionability.A2)
-            for i in range(1, 8)
+            _make_suggestion(id=f"SUG-{i:03d}", actionability=Actionability.A2) for i in range(1, 8)
         ]
         actions = [_make_action(suggestion_id=f"SUG-{i:03d}") for i in range(1, 8)]
         score = ReviewIterateEngine._compute_readiness(suggestions, actions)
@@ -338,19 +382,19 @@ class TestReadinessComputation:
 
     def test_readiness_clamped_to_zero(self):
         from src.reviewers.review_iterate import ReviewIterateEngine
+
         suggestions = [
-            _make_suggestion(id=f"SUG-{i:03d}", severity=Severity.S3)
-            for i in range(1, 10)
+            _make_suggestion(id=f"SUG-{i:03d}", severity=Severity.S3) for i in range(1, 10)
         ]
         actions = [
-            _make_action(suggestion_id=f"SUG-{i:03d}", action="deferred")
-            for i in range(1, 10)
+            _make_action(suggestion_id=f"SUG-{i:03d}", action="deferred") for i in range(1, 10)
         ]
         score = ReviewIterateEngine._compute_readiness(suggestions, actions)
         assert score == 0.0  # 9 * -15 = -135, clamped to 0
 
     def test_multiple_severities_combined(self):
         from src.reviewers.review_iterate import ReviewIterateEngine
+
         suggestions = [
             _make_suggestion(id="SUG-001", severity=Severity.S3),
             _make_suggestion(id="SUG-002", severity=Severity.S1),
@@ -370,16 +414,18 @@ class TestReadinessComputation:
 # Unit Tests: Stoplight Computation
 # =============================================================================
 
-class TestStoplightComputation:
 
+class TestStoplightComputation:
     def test_green_no_issues(self):
         from src.reviewers.review_iterate import ReviewIterateEngine
+
         entries = ReviewIterateEngine._compute_stoplight([])
         for entry in entries:
             assert entry.color == "green"
 
     def test_green_with_minor_only(self):
         from src.reviewers.review_iterate import ReviewIterateEngine
+
         suggestions = [
             _make_suggestion(severity=Severity.S0, criterion_tags=["A1"]),
             _make_suggestion(id="SUG-002", severity=Severity.S1, criterion_tags=["A2"]),
@@ -390,6 +436,7 @@ class TestStoplightComputation:
 
     def test_green_with_one_s2(self):
         from src.reviewers.review_iterate import ReviewIterateEngine
+
         suggestions = [
             _make_suggestion(severity=Severity.S2, criterion_tags=["A1"]),
         ]
@@ -400,6 +447,7 @@ class TestStoplightComputation:
 
     def test_amber_with_two_s2(self):
         from src.reviewers.review_iterate import ReviewIterateEngine
+
         suggestions = [
             _make_suggestion(id="SUG-001", severity=Severity.S2, criterion_tags=["A1"]),
             _make_suggestion(id="SUG-002", severity=Severity.S2, criterion_tags=["A2"]),
@@ -411,6 +459,7 @@ class TestStoplightComputation:
 
     def test_red_with_s3(self):
         from src.reviewers.review_iterate import ReviewIterateEngine
+
         suggestions = [
             _make_suggestion(severity=Severity.S3, criterion_tags=["C"]),
         ]
@@ -421,6 +470,7 @@ class TestStoplightComputation:
 
     def test_red_with_four_s2(self):
         from src.reviewers.review_iterate import ReviewIterateEngine
+
         suggestions = [
             _make_suggestion(id=f"SUG-{i:03d}", severity=Severity.S2, criterion_tags=["B1"])
             for i in range(1, 5)
@@ -435,10 +485,11 @@ class TestStoplightComputation:
 # Unit Tests: Ranking
 # =============================================================================
 
-class TestRanking:
 
+class TestRanking:
     def test_severity_desc_sort(self):
         from src.reviewers.review_iterate import CritiqueAtomizer
+
         suggestions = [
             _make_suggestion(id="SUG-001", severity=Severity.S0),
             _make_suggestion(id="SUG-002", severity=Severity.S3),
@@ -451,6 +502,7 @@ class TestRanking:
 
     def test_impact_desc_tiebreak(self):
         from src.reviewers.review_iterate import CritiqueAtomizer
+
         suggestions = [
             _make_suggestion(id="SUG-001", severity=Severity.S2, impact=Impact.I0),
             _make_suggestion(id="SUG-002", severity=Severity.S2, impact=Impact.I3),
@@ -461,13 +513,18 @@ class TestRanking:
 
     def test_dependency_desc_tiebreak(self):
         from src.reviewers.review_iterate import CritiqueAtomizer
+
         suggestions = [
             _make_suggestion(
-                id="SUG-001", severity=Severity.S2, impact=Impact.I2,
+                id="SUG-001",
+                severity=Severity.S2,
+                impact=Impact.I2,
                 dependency=Dependency.D0,
             ),
             _make_suggestion(
-                id="SUG-002", severity=Severity.S2, impact=Impact.I2,
+                id="SUG-002",
+                severity=Severity.S2,
+                impact=Impact.I2,
                 dependency=Dependency.D2,
             ),
         ]
@@ -477,14 +534,21 @@ class TestRanking:
 
     def test_effort_asc_tiebreak(self):
         from src.reviewers.review_iterate import CritiqueAtomizer
+
         suggestions = [
             _make_suggestion(
-                id="SUG-001", severity=Severity.S1, impact=Impact.I1,
-                dependency=Dependency.D0, effort=Effort.F3,
+                id="SUG-001",
+                severity=Severity.S1,
+                impact=Impact.I1,
+                dependency=Dependency.D0,
+                effort=Effort.F3,
             ),
             _make_suggestion(
-                id="SUG-002", severity=Severity.S1, impact=Impact.I1,
-                dependency=Dependency.D0, effort=Effort.F0,
+                id="SUG-002",
+                severity=Severity.S1,
+                impact=Impact.I1,
+                dependency=Dependency.D0,
+                effort=Effort.F0,
             ),
         ]
         ranked = CritiqueAtomizer.rank(suggestions)
@@ -493,6 +557,7 @@ class TestRanking:
 
     def test_top_n(self):
         from src.reviewers.review_iterate import CritiqueAtomizer
+
         suggestions = [_make_suggestion(id=f"SUG-{i:03d}") for i in range(1, 11)]
         top = CritiqueAtomizer.top_n(suggestions, n=3)
         assert len(top) == 3
@@ -503,10 +568,11 @@ class TestRanking:
 # Unit Tests: Budget & Timeline Checks
 # =============================================================================
 
-class TestBudgetTotalsCheck:
 
+class TestBudgetTotalsCheck:
     def test_pass_within_tolerance(self):
         from src.reviewers.review_iterate import ConsistencyChecker
+
         proposal = _make_proposal()
         # Task budgets: T1=43750, T2=75000, T3=25000 = 143750 total
         # Total budget: 200000 — well within 5%? Actually diff=56250, threshold=10000
@@ -521,6 +587,7 @@ class TestBudgetTotalsCheck:
 
     def test_fail_over_tolerance(self):
         from src.reviewers.review_iterate import ConsistencyChecker
+
         proposal = _make_proposal()
         proposal.total_budget = 100000.0  # Way off from task totals
         check = ConsistencyChecker._check_budget_totals(proposal)
@@ -529,6 +596,7 @@ class TestBudgetTotalsCheck:
 
     def test_skip_when_no_tasks(self):
         from src.reviewers.review_iterate import ConsistencyChecker
+
         proposal = _make_proposal()
         proposal.tasks = []
         check = ConsistencyChecker._check_budget_totals(proposal)
@@ -537,9 +605,9 @@ class TestBudgetTotalsCheck:
 
 
 class TestTimelineCheck:
-
     def test_pass_no_human_subjects(self):
         from src.reviewers.review_iterate import ConsistencyChecker
+
         proposal = _make_proposal()
         # Remove human-subject keywords from tasks
         for task in proposal.tasks:
@@ -550,6 +618,7 @@ class TestTimelineCheck:
 
     def test_pass_with_timing_in_ethics(self):
         from src.reviewers.review_iterate import ConsistencyChecker
+
         proposal = _make_proposal()
         # Task 1 mentions interviews, ethics mentions month
         check = ConsistencyChecker._check_timeline_ethics(proposal)
@@ -557,6 +626,7 @@ class TestTimelineCheck:
 
     def test_fail_without_timing_in_ethics(self):
         from src.reviewers.review_iterate import ConsistencyChecker
+
         proposal = _make_proposal()
         proposal.ethics_justification = "No ethical concerns anticipated."
         check = ConsistencyChecker._check_timeline_ethics(proposal)
@@ -567,28 +637,35 @@ class TestTimelineCheck:
 # Async Tests: CritiqueAtomizer
 # =============================================================================
 
-class TestCritiqueAtomizer:
 
+class TestCritiqueAtomizer:
     @pytest.mark.asyncio
     async def test_atomize_returns_valid_suggestions(self):
         from src.reviewers.review_iterate import CritiqueAtomizer
 
-        mock_suggestions = json.dumps([
-            {
-                "id": "SUG-001", "source_reviewer": "mock_reviewer",
-                "source_text": "Methodology is weak.",
-                "issue": "Methodology lacks formal framework",
-                "recommended_fix": "Add hypothesis testing framework",
-                "criterion_tags": ["A1"],
-                "target_sections": ["research_plan_methods"],
-                "severity": "S2", "evidence_status": "E2",
-                "confidence": "C2", "effort": "F2",
-                "impact": "I3", "dependency": "D0",
-                "actionability": "A2",
-                "acceptance_test": "Verify hypothesis testing framework present",
-                "depends_on": [], "blocks": [],
-            },
-        ])
+        mock_suggestions = json.dumps(
+            [
+                {
+                    "id": "SUG-001",
+                    "source_reviewer": "mock_reviewer",
+                    "source_text": "Methodology is weak.",
+                    "issue": "Methodology lacks formal framework",
+                    "recommended_fix": "Add hypothesis testing framework",
+                    "criterion_tags": ["A1"],
+                    "target_sections": ["research_plan_methods"],
+                    "severity": "S2",
+                    "evidence_status": "E2",
+                    "confidence": "C2",
+                    "effort": "F2",
+                    "impact": "I3",
+                    "dependency": "D0",
+                    "actionability": "A2",
+                    "acceptance_test": "Verify hypothesis testing framework present",
+                    "depends_on": [],
+                    "blocks": [],
+                },
+            ]
+        )
 
         mock_llm = AsyncMock()
         mock_llm.generate = AsyncMock(return_value=_mock_llm_response(mock_suggestions))
@@ -607,28 +684,48 @@ class TestCritiqueAtomizer:
     async def test_atomize_deduplication(self):
         from src.reviewers.review_iterate import CritiqueAtomizer
 
-        mock_suggestions = json.dumps([
-            {
-                "id": "SUG-001", "source_reviewer": "reviewer_a",
-                "issue": "methodology is weak and lacks framework",
-                "severity": "S1", "target_sections": ["research_plan_methods"],
-                "criterion_tags": ["A1"], "recommended_fix": "Add framework",
-                "evidence_status": "E1", "confidence": "C1", "effort": "F1",
-                "impact": "I1", "dependency": "D0", "actionability": "A1",
-                "acceptance_test": "Check", "depends_on": [], "blocks": [],
-                "source_text": "Weak methodology.",
-            },
-            {
-                "id": "SUG-002", "source_reviewer": "reviewer_b",
-                "issue": "methodology is weak and lacks framework",
-                "severity": "S2", "target_sections": ["research_plan_methods"],
-                "criterion_tags": ["A1"], "recommended_fix": "Add formal testing",
-                "evidence_status": "E1", "confidence": "C1", "effort": "F1",
-                "impact": "I1", "dependency": "D0", "actionability": "A1",
-                "acceptance_test": "Check", "depends_on": [], "blocks": [],
-                "source_text": "Weak methodology.",
-            },
-        ])
+        mock_suggestions = json.dumps(
+            [
+                {
+                    "id": "SUG-001",
+                    "source_reviewer": "reviewer_a",
+                    "issue": "methodology is weak and lacks framework",
+                    "severity": "S1",
+                    "target_sections": ["research_plan_methods"],
+                    "criterion_tags": ["A1"],
+                    "recommended_fix": "Add framework",
+                    "evidence_status": "E1",
+                    "confidence": "C1",
+                    "effort": "F1",
+                    "impact": "I1",
+                    "dependency": "D0",
+                    "actionability": "A1",
+                    "acceptance_test": "Check",
+                    "depends_on": [],
+                    "blocks": [],
+                    "source_text": "Weak methodology.",
+                },
+                {
+                    "id": "SUG-002",
+                    "source_reviewer": "reviewer_b",
+                    "issue": "methodology is weak and lacks framework",
+                    "severity": "S2",
+                    "target_sections": ["research_plan_methods"],
+                    "criterion_tags": ["A1"],
+                    "recommended_fix": "Add formal testing",
+                    "evidence_status": "E1",
+                    "confidence": "C1",
+                    "effort": "F1",
+                    "impact": "I1",
+                    "dependency": "D0",
+                    "actionability": "A1",
+                    "acceptance_test": "Check",
+                    "depends_on": [],
+                    "blocks": [],
+                    "source_text": "Weak methodology.",
+                },
+            ]
+        )
 
         mock_llm = AsyncMock()
         mock_llm.generate = AsyncMock(return_value=_mock_llm_response(mock_suggestions))
@@ -664,22 +761,36 @@ class TestCritiqueAtomizer:
 # Async Tests: ConsistencyChecker
 # =============================================================================
 
-class TestConsistencyCheckerAsync:
 
+class TestConsistencyCheckerAsync:
     @pytest.mark.asyncio
     async def test_llm_checks_parse_correctly(self):
         from src.reviewers.review_iterate import ConsistencyChecker
 
-        mock_results = json.dumps([
-            {"check_name": "country_set_consistent", "passed": True,
-             "details": "Countries consistent."},
-            {"check_name": "hypotheses_traceability", "passed": False,
-             "details": "RQ3 has no task."},
-            {"check_name": "ethics_human_subjects_consistency", "passed": True,
-             "details": "Ethics covers all."},
-            {"check_name": "benchmarks_independence_min_package", "passed": True,
-             "details": "Independent benchmarks."},
-        ])
+        mock_results = json.dumps(
+            [
+                {
+                    "check_name": "country_set_consistent",
+                    "passed": True,
+                    "details": "Countries consistent.",
+                },
+                {
+                    "check_name": "hypotheses_traceability",
+                    "passed": False,
+                    "details": "RQ3 has no task.",
+                },
+                {
+                    "check_name": "ethics_human_subjects_consistency",
+                    "passed": True,
+                    "details": "Ethics covers all.",
+                },
+                {
+                    "check_name": "benchmarks_independence_min_package",
+                    "passed": True,
+                    "details": "Independent benchmarks.",
+                },
+            ]
+        )
 
         mock_llm = AsyncMock()
         mock_llm.generate = AsyncMock(return_value=_mock_llm_response(mock_results))
@@ -689,12 +800,15 @@ class TestConsistencyCheckerAsync:
         draft = _make_draft()
 
         checks = await checker.run_checks(
-            proposal, draft,
+            proposal,
+            draft,
             enabled_checks=[
-                "country_set_consistent", "hypotheses_traceability",
+                "country_set_consistent",
+                "hypotheses_traceability",
                 "ethics_human_subjects_consistency",
                 "benchmarks_independence_min_package",
-                "budget_totals_reconcile", "timeline_ethics_gate",
+                "budget_totals_reconcile",
+                "timeline_ethics_gate",
             ],
         )
 
@@ -717,7 +831,8 @@ class TestConsistencyCheckerAsync:
         draft = _make_draft()
 
         checks = await checker.run_checks(
-            proposal, draft,
+            proposal,
+            draft,
             enabled_checks=["budget_totals_reconcile", "timeline_ethics_gate"],
         )
 
@@ -729,40 +844,66 @@ class TestConsistencyCheckerAsync:
 # Async Tests: Full ReviewIterateEngine
 # =============================================================================
 
-class TestReviewIterateEngine:
 
+class TestReviewIterateEngine:
     @pytest.mark.asyncio
     async def test_full_revise_produces_output(self):
         from src.reviewers.review_iterate import ReviewIterateEngine
 
-        mock_suggestions = json.dumps([{
-            "id": "SUG-001", "source_reviewer": "mock",
-            "source_text": "Weak.", "issue": "Methodology gaps",
-            "recommended_fix": "Add framework",
-            "criterion_tags": ["A1"],
-            "target_sections": ["state_of_art_objectives"],
-            "severity": "S2", "evidence_status": "E1",
-            "confidence": "C1", "effort": "F1",
-            "impact": "I2", "dependency": "D0",
-            "actionability": "A2",
-            "acceptance_test": "Framework present",
-            "depends_on": [], "blocks": [],
-        }])
+        mock_suggestions = json.dumps(
+            [
+                {
+                    "id": "SUG-001",
+                    "source_reviewer": "mock",
+                    "source_text": "Weak.",
+                    "issue": "Methodology gaps",
+                    "recommended_fix": "Add framework",
+                    "criterion_tags": ["A1"],
+                    "target_sections": ["state_of_art_objectives"],
+                    "severity": "S2",
+                    "evidence_status": "E1",
+                    "confidence": "C1",
+                    "effort": "F1",
+                    "impact": "I2",
+                    "dependency": "D0",
+                    "actionability": "A2",
+                    "acceptance_test": "Framework present",
+                    "depends_on": [],
+                    "blocks": [],
+                }
+            ]
+        )
 
-        mock_consistency = json.dumps([
-            {"check_name": "country_set_consistent", "passed": True, "details": "OK"},
-            {"check_name": "hypotheses_traceability", "passed": True, "details": "OK"},
-            {"check_name": "ethics_human_subjects_consistency", "passed": True, "details": "OK"},
-            {"check_name": "benchmarks_independence_min_package", "passed": True, "details": "OK"},
-        ])
+        mock_consistency = json.dumps(
+            [
+                {"check_name": "country_set_consistent", "passed": True, "details": "OK"},
+                {"check_name": "hypotheses_traceability", "passed": True, "details": "OK"},
+                {
+                    "check_name": "ethics_human_subjects_consistency",
+                    "passed": True,
+                    "details": "OK",
+                },
+                {
+                    "check_name": "benchmarks_independence_min_package",
+                    "passed": True,
+                    "details": "OK",
+                },
+            ]
+        )
 
-        mock_narrative = json.dumps({
-            "executive_summary": "Readiness improved.",
-            "science_method_changes": "Added framework.",
-            "feasibility_budget_changes": "Budget reconciled.",
-            "ethics_compliance_changes": "No changes needed.",
-            "risk_register": "| # | Risk | Severity | Mitigation | Owner |\n|---|------|----------|------------|-------|\n| 1 | Timeline | S1 | Buffer | PI |",
-        })
+        mock_narrative = json.dumps(
+            {
+                "executive_summary": "Readiness improved.",
+                "science_method_changes": "Added framework.",
+                "feasibility_budget_changes": "Budget reconciled.",
+                "ethics_compliance_changes": "No changes needed.",
+                "risk_register": (
+                    "| # | Risk | Severity | Mitigation | Owner |"
+                    "\n|---|------|----------|------------|-------|"
+                    "\n| 1 | Timeline | S1 | Buffer | PI |"
+                ),
+            }
+        )
 
         call_count = 0
 
@@ -787,8 +928,10 @@ class TestReviewIterateEngine:
             mock_cfg.review_iterate_max_suggestions = 20
             mock_cfg.review_iterate_include_trivial = True
             mock_cfg.review_iterate_consistency_checks = [
-                "budget_totals_reconcile", "timeline_ethics_gate",
-                "country_set_consistent", "hypotheses_traceability",
+                "budget_totals_reconcile",
+                "timeline_ethics_gate",
+                "country_set_consistent",
+                "hypotheses_traceability",
                 "ethics_human_subjects_consistency",
                 "benchmarks_independence_min_package",
             ]
@@ -800,8 +943,11 @@ class TestReviewIterateEngine:
             draft = _make_draft()
 
             revised, report = await engine.revise(
-                proposal, consensus, version=1,
-                draft=draft, output_dir=None,
+                proposal,
+                consensus,
+                version=1,
+                draft=draft,
+                output_dir=None,
             )
 
         assert isinstance(revised, Proposal)
@@ -817,8 +963,8 @@ class TestReviewIterateEngine:
 # Tests: Improvement Report Markdown Structure
 # =============================================================================
 
-class TestImprovementReportStructure:
 
+class TestImprovementReportStructure:
     def test_all_12_sections_present(self):
         from src.utils.txt_formatter import improvement_report_to_md
 
@@ -827,14 +973,18 @@ class TestImprovementReportStructure:
             timestamp="2026-03-01T00:00:00Z",
             readiness_index=75.0,
             stoplight=[
-                StoplightEntry(criterion="A", color="green", s3_count=0, s2_count=1,
-                               rationale="Minor issues"),
-                StoplightEntry(criterion="B", color="amber", s3_count=0, s2_count=2,
-                               rationale="Team gaps"),
-                StoplightEntry(criterion="C", color="red", s3_count=1, s2_count=0,
-                               rationale="Budget fatal"),
-                StoplightEntry(criterion="E", color="green", s3_count=0, s2_count=0,
-                               rationale="No issues"),
+                StoplightEntry(
+                    criterion="A", color="green", s3_count=0, s2_count=1, rationale="Minor issues"
+                ),
+                StoplightEntry(
+                    criterion="B", color="amber", s3_count=0, s2_count=2, rationale="Team gaps"
+                ),
+                StoplightEntry(
+                    criterion="C", color="red", s3_count=1, s2_count=0, rationale="Budget fatal"
+                ),
+                StoplightEntry(
+                    criterion="E", color="green", s3_count=0, s2_count=0, rationale="No issues"
+                ),
             ],
             all_suggestions=[
                 _make_suggestion(id="SUG-001", severity=Severity.S3, criterion_tags=["C"]),
@@ -845,17 +995,21 @@ class TestImprovementReportStructure:
                 _make_action(suggestion_id="SUG-002", action="deferred"),
             ],
             consistency_checks=[
-                ConsistencyCheck(check_name="budget_totals_reconcile", passed=False,
-                                 details="Mismatch."),
-                ConsistencyCheck(check_name="timeline_ethics_gate", passed=True,
-                                 details="OK."),
+                ConsistencyCheck(
+                    check_name="budget_totals_reconcile", passed=False, details="Mismatch."
+                ),
+                ConsistencyCheck(check_name="timeline_ethics_gate", passed=True, details="OK."),
             ],
             top5_ids=["SUG-001", "SUG-002"],
             executive_summary="Good progress but budget needs fixing.",
             science_method_changes="Added hypothesis framework.",
             feasibility_budget_changes="Budget partially reconciled.",
             ethics_compliance_changes="No changes.",
-            risk_register="| # | Risk | Severity | Mitigation | Owner |\n|---|------|----------|------------|-------|\n| 1 | Budget | S3 | Rebalance | PI |",
+            risk_register=(
+                "| # | Risk | Severity | Mitigation | Owner |"
+                "\n|---|------|----------|------------|-------|"
+                "\n| 1 | Budget | S3 | Rebalance | PI |"
+            ),
         )
 
         md = improvement_report_to_md(report, version=1)
@@ -886,8 +1040,8 @@ class TestImprovementReportStructure:
 # Tests: Application Markdown
 # =============================================================================
 
-class TestApplicationMarkdown:
 
+class TestApplicationMarkdown:
     def test_proposal_to_application_md(self):
         from src.utils.txt_formatter import proposal_to_application_md
 
@@ -907,74 +1061,128 @@ class TestApplicationMarkdown:
 # Integration: Pipeline with ReviewIterate
 # =============================================================================
 
-class TestPipelineWithReviewIterate:
 
+class TestPipelineWithReviewIterate:
     @pytest.mark.asyncio
     async def test_pipeline_uses_review_iterate_when_enabled(self, tmp_path):
+        from src.config.settings import ReviewerDef
         from src.generators.pipeline import Pipeline
         from src.generators.proposal_generator import ProposalGenerator
-        from src.reviewers.panel_reviewer import ReviewPanel, RevisionEngine, AIReviewer
-        from src.config.settings import ReviewerDef
+        from src.reviewers.panel_reviewer import AIReviewer, ReviewPanel, RevisionEngine
         from src.reviewers.review_iterate import ReviewIterateEngine
 
-        mock_suggestions = json.dumps([{
-            "id": "SUG-001", "source_reviewer": "mock",
-            "source_text": "Weak.", "issue": "Methodology gaps",
-            "recommended_fix": "Add framework",
-            "criterion_tags": ["A1"],
-            "target_sections": ["state_of_art_objectives"],
-            "severity": "S1", "evidence_status": "E1",
-            "confidence": "C1", "effort": "F1",
-            "impact": "I1", "dependency": "D0",
-            "actionability": "A1",
-            "acceptance_test": "Check",
-            "depends_on": [], "blocks": [],
-        }])
+        mock_suggestions = json.dumps(
+            [
+                {
+                    "id": "SUG-001",
+                    "source_reviewer": "mock",
+                    "source_text": "Weak.",
+                    "issue": "Methodology gaps",
+                    "recommended_fix": "Add framework",
+                    "criterion_tags": ["A1"],
+                    "target_sections": ["state_of_art_objectives"],
+                    "severity": "S1",
+                    "evidence_status": "E1",
+                    "confidence": "C1",
+                    "effort": "F1",
+                    "impact": "I1",
+                    "dependency": "D0",
+                    "actionability": "A1",
+                    "acceptance_test": "Check",
+                    "depends_on": [],
+                    "blocks": [],
+                }
+            ]
+        )
 
-        mock_consistency = json.dumps([
-            {"check_name": "country_set_consistent", "passed": True, "details": "OK"},
-        ])
+        mock_consistency = json.dumps(
+            [
+                {"check_name": "country_set_consistent", "passed": True, "details": "OK"},
+            ]
+        )
 
-        mock_narrative = json.dumps({
-            "executive_summary": "Summary.",
-            "science_method_changes": "Changes.",
-            "feasibility_budget_changes": "Budget.",
-            "ethics_compliance_changes": "Ethics.",
-            "risk_register": "| # | Risk |\n|---|------|\n| 1 | None |",
-        })
+        mock_narrative = json.dumps(
+            {
+                "executive_summary": "Summary.",
+                "science_method_changes": "Changes.",
+                "feasibility_budget_changes": "Budget.",
+                "ethics_compliance_changes": "Ethics.",
+                "risk_register": "| # | Risk |\n|---|------|\n| 1 | None |",
+            }
+        )
 
         from src.config.fct_constants import CHAR_LIMITS
 
         def _build_section_text(section: str, limit: int) -> str:
             base = f"This is the generated {section} section. "
-            return (base * (limit // len(base) + 1))[:limit - 100]
+            return (base * (limit // len(base) + 1))[: limit - 100]
 
         def _build_tasks_json():
-            return json.dumps([{
-                "number": 1, "denomination": "Task One",
-                "description": "Description.", "person_months": 4.0,
-                "start_month": 1, "duration_months": 8,
-            }])
+            return json.dumps(
+                [
+                    {
+                        "number": 1,
+                        "denomination": "Task One",
+                        "description": "Description.",
+                        "person_months": 4.0,
+                        "start_month": 1,
+                        "duration_months": 8,
+                    }
+                ]
+            )
 
         def _build_review_json(score=6.0):
-            return json.dumps({
-                "overall_score": score,
-                "criterion_scores": [
-                    {"criterion": "A", "sub_criterion": "A1", "score": score,
-                     "strengths": ["Good"], "weaknesses": ["Needs more detail"],
-                     "suggestions": ["Add detail"]},
-                    {"criterion": "A", "sub_criterion": "A2", "score": score,
-                     "strengths": ["Novel"], "weaknesses": [], "suggestions": []},
-                    {"criterion": "B", "sub_criterion": "B1", "score": score,
-                     "strengths": ["Strong"], "weaknesses": [], "suggestions": []},
-                    {"criterion": "B", "sub_criterion": "B2", "score": score,
-                     "strengths": ["Team"], "weaknesses": [], "suggestions": []},
-                    {"criterion": "C", "sub_criterion": "C", "score": score,
-                     "strengths": ["Feasible"], "weaknesses": [], "suggestions": []},
-                ],
-                "general_comments": "Needs revision.", "major_revisions": ["Fix methodology"],
-                "minor_revisions": [], "decision": "major_revision",
-            })
+            return json.dumps(
+                {
+                    "overall_score": score,
+                    "criterion_scores": [
+                        {
+                            "criterion": "A",
+                            "sub_criterion": "A1",
+                            "score": score,
+                            "strengths": ["Good"],
+                            "weaknesses": ["Needs more detail"],
+                            "suggestions": ["Add detail"],
+                        },
+                        {
+                            "criterion": "A",
+                            "sub_criterion": "A2",
+                            "score": score,
+                            "strengths": ["Novel"],
+                            "weaknesses": [],
+                            "suggestions": [],
+                        },
+                        {
+                            "criterion": "B",
+                            "sub_criterion": "B1",
+                            "score": score,
+                            "strengths": ["Strong"],
+                            "weaknesses": [],
+                            "suggestions": [],
+                        },
+                        {
+                            "criterion": "B",
+                            "sub_criterion": "B2",
+                            "score": score,
+                            "strengths": ["Team"],
+                            "weaknesses": [],
+                            "suggestions": [],
+                        },
+                        {
+                            "criterion": "C",
+                            "sub_criterion": "C",
+                            "score": score,
+                            "strengths": ["Feasible"],
+                            "weaknesses": [],
+                            "suggestions": [],
+                        },
+                    ],
+                    "general_comments": "Needs revision.",
+                    "major_revisions": ["Fix methodology"],
+                    "minor_revisions": [],
+                    "decision": "major_revision",
+                }
+            )
 
         async def _side_effect(prompt="", system="", max_tokens=4096, temperature=0.3):
             text = prompt.lower()
@@ -984,10 +1192,14 @@ class TestPipelineWithReviewIterate:
                 return _mock_llm_response("Panel consensus.")
             # Draft updater prompt
             if "improve the draft idea" in text or "draft fields" in text:
-                return _mock_llm_response(json.dumps({
-                    "updated_fields": {},
-                    "changes_log": [{"field": "none", "change": "no change"}],
-                }))
+                return _mock_llm_response(
+                    json.dumps(
+                        {
+                            "updated_fields": {},
+                            "changes_log": [{"field": "none", "change": "no change"}],
+                        }
+                    )
+                )
             if "grading rubric" in text or "atomize" in text:
                 return _mock_llm_response(mock_suggestions)
             if "consistency" in text and "auditor" in text:
@@ -1013,9 +1225,11 @@ class TestPipelineWithReviewIterate:
         mock_llm.generate = AsyncMock(side_effect=_side_effect)
         mock_llm.generate_json = AsyncMock(side_effect=_side_effect)
 
-        from src.generators.models import DraftIdea
         from unittest.mock import MagicMock
+
         import yaml
+
+        from src.generators.models import DraftIdea
 
         draft_path = Path("drafts/example_idea.yaml")
         data = yaml.safe_load(draft_path.read_text())
@@ -1026,11 +1240,16 @@ class TestPipelineWithReviewIterate:
         generator = ProposalGenerator(llm=mock_llm, scopus=mock_scopus)
         panel = ReviewPanel.__new__(ReviewPanel)
         panel.consensus_llm = mock_llm
-        mock_reviewer_def = ReviewerDef({
-            "id": "mock_reviewer", "enabled": True, "provider": "anthropic",
-            "model": "mock", "perspective": "general",
-            "focus_criteria": ["A1", "A2", "B1", "B2", "C"],
-        })
+        mock_reviewer_def = ReviewerDef(
+            {
+                "id": "mock_reviewer",
+                "enabled": True,
+                "provider": "anthropic",
+                "model": "mock",
+                "perspective": "general",
+                "focus_criteria": ["A1", "A2", "B1", "B2", "C"],
+            }
+        )
         reviewer = AIReviewer.__new__(AIReviewer)
         reviewer.defn = mock_reviewer_def
         reviewer.llm = mock_llm
@@ -1040,12 +1259,16 @@ class TestPipelineWithReviewIterate:
         ri_engine = ReviewIterateEngine(llm=mock_llm)
 
         pipeline = Pipeline(
-            generator=generator, panel=panel, reviser=reviser,
+            generator=generator,
+            panel=panel,
+            reviser=reviser,
             review_iterate_engine=ri_engine,
         )
 
-        with patch("src.generators.pipeline.cfg") as mock_cfg, \
-             patch("src.generators.draft_updater.get_llm_for_role", return_value=mock_llm):
+        with (
+            patch("src.generators.pipeline.cfg") as mock_cfg,
+            patch("src.generators.draft_updater.get_llm_for_role", return_value=mock_llm),
+        ):
             mock_cfg.iterations = 2
             mock_cfg.stop_on_accept = False
             mock_cfg.save_intermediates = True
@@ -1062,7 +1285,8 @@ class TestPipelineWithReviewIterate:
                 ri_cfg.review_iterate_max_suggestions = 20
                 ri_cfg.review_iterate_include_trivial = True
                 ri_cfg.review_iterate_consistency_checks = [
-                    "budget_totals_reconcile", "timeline_ethics_gate",
+                    "budget_totals_reconcile",
+                    "timeline_ethics_gate",
                 ]
                 ri_cfg.revision.temperature = 0.3
 
@@ -1074,38 +1298,58 @@ class TestPipelineWithReviewIterate:
 
 
 class TestPipelineBackwardCompat:
-
     @pytest.mark.asyncio
     async def test_pipeline_unchanged_when_disabled(self, tmp_path):
+        from src.config.fct_constants import CHAR_LIMITS
         from src.generators.pipeline import Pipeline
         from src.generators.proposal_generator import ProposalGenerator
         from src.reviewers.panel_reviewer import ReviewPanel, RevisionEngine
 
-        from src.config.fct_constants import CHAR_LIMITS
-
         def _build_section_text(section, limit):
             base = f"This is the generated {section} section. "
-            return (base * (limit // len(base) + 1))[:limit - 100]
+            return (base * (limit // len(base) + 1))[: limit - 100]
 
         async def _side_effect(prompt="", system="", max_tokens=4096, temperature=0.3):
             text = prompt.lower()
             if "evaluate" in text and "fct" in text:
-                return _mock_llm_response(json.dumps({
-                    "overall_score": 8.0, "decision": "accept",
-                    "criterion_scores": [
-                        {"criterion": "A", "sub_criterion": "A1", "score": 8.0,
-                         "strengths": ["Good"], "weaknesses": [], "suggestions": []},
-                    ],
-                    "general_comments": "Good.", "major_revisions": [], "minor_revisions": [],
-                }))
+                return _mock_llm_response(
+                    json.dumps(
+                        {
+                            "overall_score": 8.0,
+                            "decision": "accept",
+                            "criterion_scores": [
+                                {
+                                    "criterion": "A",
+                                    "sub_criterion": "A1",
+                                    "score": 8.0,
+                                    "strengths": ["Good"],
+                                    "weaknesses": [],
+                                    "suggestions": [],
+                                },
+                            ],
+                            "general_comments": "Good.",
+                            "major_revisions": [],
+                            "minor_revisions": [],
+                        }
+                    )
+                )
             if "synthesise" in text or "consensus" in text:
                 return _mock_llm_response("Consensus.")
             if "task" in text and "json" in text:
-                return _mock_llm_response(json.dumps([{
-                    "number": 1, "denomination": "Task",
-                    "description": "Desc.", "person_months": 4.0,
-                    "start_month": 1, "duration_months": 8,
-                }]))
+                return _mock_llm_response(
+                    json.dumps(
+                        [
+                            {
+                                "number": 1,
+                                "denomination": "Task",
+                                "description": "Desc.",
+                                "person_months": 4.0,
+                                "start_month": 1,
+                                "duration_months": 8,
+                            }
+                        ]
+                    )
+                )
             for section, limit in [
                 ("abstract", CHAR_LIMITS.abstract_en),
                 ("state_of_art", CHAR_LIMITS.state_of_art_objectives),
@@ -1119,9 +1363,11 @@ class TestPipelineBackwardCompat:
         mock_llm.generate = AsyncMock(side_effect=_side_effect)
         mock_llm.generate_json = AsyncMock(side_effect=_side_effect)
 
-        from src.generators.models import DraftIdea
         from unittest.mock import MagicMock
+
         import yaml
+
+        from src.generators.models import DraftIdea
 
         draft_path = Path("drafts/example_idea.yaml")
         data = yaml.safe_load(draft_path.read_text())
@@ -1159,22 +1405,25 @@ class TestPipelineBackwardCompat:
 # Tests: LLM Pricing
 # =============================================================================
 
-class TestLLMPricing:
 
+class TestLLMPricing:
     def test_known_model_pricing(self):
         from src.config.llm_pricing import get_pricing
+
         # Full model ID should match by prefix
         inp, out = get_pricing("claude-opus-4-20250514")
         assert inp == 15.0
         assert out == 75.0
 
     def test_unknown_model_fallback(self):
-        from src.config.llm_pricing import get_pricing, DEFAULT_PRICING
+        from src.config.llm_pricing import DEFAULT_PRICING, get_pricing
+
         result = get_pricing("some-unknown-model-xyz")
         assert result == DEFAULT_PRICING
 
     def test_estimate_cost_basic(self):
         from src.config.llm_pricing import estimate_cost
+
         # 1000 input + 500 output at claude-opus-4 prices (15/75 per 1M)
         cost = estimate_cost("claude-opus-4-20250514", 1000, 500)
         expected = (1000 * 15.0 + 500 * 75.0) / 1_000_000
@@ -1182,6 +1431,7 @@ class TestLLMPricing:
 
     def test_longest_prefix_wins(self):
         from src.config.llm_pricing import get_pricing
+
         # "gpt-4o-mini" should match "gpt-4o-mini" (0.15/0.60), not "gpt-4o" (2.50/10.0)
         inp, out = get_pricing("gpt-4o-mini-2024-07-18")
         assert inp == 0.15
@@ -1189,6 +1439,7 @@ class TestLLMPricing:
 
     def test_estimate_cost_zero_tokens(self):
         from src.config.llm_pricing import estimate_cost
+
         cost = estimate_cost("claude-opus-4", 0, 0)
         assert cost == 0.0
 
@@ -1197,8 +1448,8 @@ class TestLLMPricing:
 # Tests: CostTracker
 # =============================================================================
 
-class TestCostTracker:
 
+class TestCostTracker:
     def test_record_and_summarize(self):
         from src.reviewers.review_iterate import CostTracker
 
@@ -1206,16 +1457,25 @@ class TestCostTracker:
 
         # Simulate 3 LLM responses
         resp1 = LLMResponse(
-            text="atomized", model="claude-opus-4-20250514",
-            provider=LLMProvider.ANTHROPIC, input_tokens=5000, output_tokens=1000,
+            text="atomized",
+            model="claude-opus-4-20250514",
+            provider=LLMProvider.ANTHROPIC,
+            input_tokens=5000,
+            output_tokens=1000,
         )
         resp2 = LLMResponse(
-            text="revised", model="claude-opus-4-20250514",
-            provider=LLMProvider.ANTHROPIC, input_tokens=8000, output_tokens=2000,
+            text="revised",
+            model="claude-opus-4-20250514",
+            provider=LLMProvider.ANTHROPIC,
+            input_tokens=8000,
+            output_tokens=2000,
         )
         resp3 = LLMResponse(
-            text="narrative", model="gpt-4o-mini-2024",
-            provider=LLMProvider.OPENAI, input_tokens=3000, output_tokens=500,
+            text="narrative",
+            model="gpt-4o-mini-2024",
+            provider=LLMProvider.OPENAI,
+            input_tokens=3000,
+            output_tokens=500,
         )
 
         tracker.record(resp1, call_id="atomize", step="atomize")
@@ -1258,8 +1518,8 @@ class TestCostTracker:
 # Tests: Cost Report Markdown
 # =============================================================================
 
-class TestCostReportMarkdown:
 
+class TestCostReportMarkdown:
     def test_cost_report_has_all_sections(self):
         from src.utils.txt_formatter import cost_report_to_md
 
@@ -1270,16 +1530,26 @@ class TestCostReportMarkdown:
             total_cost_usd=0.225,
             calls=[
                 LLMCallRecord(
-                    call_id="atomize", step="atomize",
-                    model="claude-opus-4-20250514", provider="anthropic",
-                    input_tokens=5000, output_tokens=1000, total_tokens=6000,
-                    cost_usd=0.15, timestamp="2026-03-01T00:00:00Z",
+                    call_id="atomize",
+                    step="atomize",
+                    model="claude-opus-4-20250514",
+                    provider="anthropic",
+                    input_tokens=5000,
+                    output_tokens=1000,
+                    total_tokens=6000,
+                    cost_usd=0.15,
+                    timestamp="2026-03-01T00:00:00Z",
                 ),
                 LLMCallRecord(
-                    call_id="revise_abstract_en", step="revise",
-                    model="claude-opus-4-20250514", provider="anthropic",
-                    input_tokens=5000, output_tokens=1000, total_tokens=6000,
-                    cost_usd=0.075, timestamp="2026-03-01T00:01:00Z",
+                    call_id="revise_abstract_en",
+                    step="revise",
+                    model="claude-opus-4-20250514",
+                    provider="anthropic",
+                    input_tokens=5000,
+                    output_tokens=1000,
+                    total_tokens=6000,
+                    cost_usd=0.075,
+                    timestamp="2026-03-01T00:01:00Z",
                 ),
             ],
             by_step={"atomize": 0.15, "revise": 0.075},
@@ -1303,8 +1573,8 @@ class TestCostReportMarkdown:
 # Tests: Improvement Report Section 13
 # =============================================================================
 
-class TestImprovementReportCostSection:
 
+class TestImprovementReportCostSection:
     def test_section_13_appears_in_md(self):
         from src.utils.txt_formatter import improvement_report_to_md
 
@@ -1353,57 +1623,78 @@ class TestImprovementReportCostSection:
     async def test_cost_files_saved_by_save_artifacts(self, tmp_path):
         from src.reviewers.review_iterate import ReviewIterateEngine
 
-        mock_suggestions = json.dumps([{
-            "id": "SUG-001", "source_reviewer": "mock",
-            "source_text": "Weak.", "issue": "Methodology gaps",
-            "recommended_fix": "Add framework",
-            "criterion_tags": ["A1"],
-            "target_sections": ["state_of_art_objectives"],
-            "severity": "S2", "evidence_status": "E1",
-            "confidence": "C1", "effort": "F1",
-            "impact": "I2", "dependency": "D0",
-            "actionability": "A2",
-            "acceptance_test": "Framework present",
-            "depends_on": [], "blocks": [],
-        }])
+        mock_suggestions = json.dumps(
+            [
+                {
+                    "id": "SUG-001",
+                    "source_reviewer": "mock",
+                    "source_text": "Weak.",
+                    "issue": "Methodology gaps",
+                    "recommended_fix": "Add framework",
+                    "criterion_tags": ["A1"],
+                    "target_sections": ["state_of_art_objectives"],
+                    "severity": "S2",
+                    "evidence_status": "E1",
+                    "confidence": "C1",
+                    "effort": "F1",
+                    "impact": "I2",
+                    "dependency": "D0",
+                    "actionability": "A2",
+                    "acceptance_test": "Framework present",
+                    "depends_on": [],
+                    "blocks": [],
+                }
+            ]
+        )
 
-        mock_consistency = json.dumps([
-            {"check_name": "country_set_consistent", "passed": True, "details": "OK"},
-        ])
+        mock_consistency = json.dumps(
+            [
+                {"check_name": "country_set_consistent", "passed": True, "details": "OK"},
+            ]
+        )
 
-        mock_narrative = json.dumps({
-            "executive_summary": "Summary.",
-            "science_method_changes": "Changes.",
-            "feasibility_budget_changes": "Budget.",
-            "ethics_compliance_changes": "Ethics.",
-            "risk_register": "| # | Risk |\n|---|------|\n| 1 | None |",
-        })
+        mock_narrative = json.dumps(
+            {
+                "executive_summary": "Summary.",
+                "science_method_changes": "Changes.",
+                "feasibility_budget_changes": "Budget.",
+                "ethics_compliance_changes": "Ethics.",
+                "risk_register": "| # | Risk |\n|---|------|\n| 1 | None |",
+            }
+        )
 
         async def _side_effect(prompt="", system="", max_tokens=4096, temperature=0.3):
             text = prompt.lower()
             if "grading rubric" in text or "atomize" in text:
                 return LLMResponse(
-                    text=mock_suggestions, model="claude-opus-4-20250514",
+                    text=mock_suggestions,
+                    model="claude-opus-4-20250514",
                     provider=LLMProvider.ANTHROPIC,
-                    input_tokens=5000, output_tokens=1000,
+                    input_tokens=5000,
+                    output_tokens=1000,
                 )
             if "consistency" in text and "auditor" in text:
                 return LLMResponse(
-                    text=mock_consistency, model="claude-opus-4-20250514",
+                    text=mock_consistency,
+                    model="claude-opus-4-20250514",
                     provider=LLMProvider.ANTHROPIC,
-                    input_tokens=4000, output_tokens=800,
+                    input_tokens=4000,
+                    output_tokens=800,
                 )
             if "improvement report" in text or "narrative" in text:
                 return LLMResponse(
-                    text=mock_narrative, model="claude-opus-4-20250514",
+                    text=mock_narrative,
+                    model="claude-opus-4-20250514",
                     provider=LLMProvider.ANTHROPIC,
-                    input_tokens=3000, output_tokens=600,
+                    input_tokens=3000,
+                    output_tokens=600,
                 )
             return LLMResponse(
                 text="Revised section text with improvements." * 50,
                 model="claude-opus-4-20250514",
                 provider=LLMProvider.ANTHROPIC,
-                input_tokens=6000, output_tokens=1500,
+                input_tokens=6000,
+                output_tokens=1500,
             )
 
         mock_llm = AsyncMock()
@@ -1414,7 +1705,8 @@ class TestImprovementReportCostSection:
             mock_cfg.review_iterate_max_suggestions = 20
             mock_cfg.review_iterate_include_trivial = True
             mock_cfg.review_iterate_consistency_checks = [
-                "budget_totals_reconcile", "timeline_ethics_gate",
+                "budget_totals_reconcile",
+                "timeline_ethics_gate",
             ]
             mock_cfg.revision.temperature = 0.3
 
@@ -1424,8 +1716,11 @@ class TestImprovementReportCostSection:
             draft = _make_draft()
 
             revised, report = await engine.revise(
-                proposal, consensus, version=1,
-                draft=draft, output_dir=tmp_path,
+                proposal,
+                consensus,
+                version=1,
+                draft=draft,
+                output_dir=tmp_path,
             )
 
         # Verify cost summary is populated

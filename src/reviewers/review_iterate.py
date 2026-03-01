@@ -10,12 +10,14 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
-from src.config.fct_constants import CHAR_LIMITS, PROPOSAL_SECTIONS
+from src.config.fct_constants import CHAR_LIMITS
+from src.config.llm_pricing import estimate_cost
 from src.config.settings import cfg
 from src.generators.models import (
+    SEVERITY_PENALTY,
     Actionability,
     Confidence,
     ConsensusReport,
@@ -33,9 +35,8 @@ from src.generators.models import (
     StoplightEntry,
     SuggestionAction,
     SuggestionRecord,
-    SEVERITY_PENALTY,
 )
-from src.config.llm_pricing import estimate_cost
+from src.utils.json_utils import extract_json
 from src.utils.llm_client import BaseLLMClient, LLMResponse, get_llm_for_role
 from src.utils.prompt_loader import load_prompt_template
 from src.utils.text_utils import safe_limit, safe_truncate
@@ -45,11 +46,21 @@ logger = logging.getLogger(__name__)
 
 # Valid proposal field names for target_sections
 _VALID_SECTIONS = [
-    "abstract_en", "abstract_pt", "state_of_art_objectives",
-    "research_plan_methods", "bibliographic_references", "career_profile",
-    "contributions_new_ideas", "contributions_teams", "contributions_society",
-    "further_details", "team_cv_synopsis", "management_structure",
-    "ethics_justification", "institution_description", "why_timely_pex",
+    "abstract_en",
+    "abstract_pt",
+    "state_of_art_objectives",
+    "research_plan_methods",
+    "bibliographic_references",
+    "career_profile",
+    "contributions_new_ideas",
+    "contributions_teams",
+    "contributions_society",
+    "further_details",
+    "team_cv_synopsis",
+    "management_structure",
+    "ethics_justification",
+    "institution_description",
+    "why_timely_pex",
 ]
 
 _VALID_CRITERIA = ["A", "A1", "A2", "B", "B1", "B2", "C", "E"]
@@ -82,26 +93,10 @@ def _parse_enum(val: str, enum_cls: type, default):
         return default
 
 
-def _extract_json_from_text(text: str) -> str:
-    """Strip markdown fences and find JSON content."""
-    clean = text.strip()
-    if clean.startswith("```"):
-        clean = clean.split("\n", 1)[-1]
-    if clean.endswith("```"):
-        clean = clean.rsplit("```", 1)[0]
-    clean = clean.strip()
-    # Try to find array or object boundaries
-    for start_char, end_char in [("[", "]"), ("{", "}")]:
-        start = clean.find(start_char)
-        end = clean.rfind(end_char)
-        if start != -1 and end != -1 and end > start:
-            return clean[start:end + 1]
-    return clean
-
-
 # =============================================================================
 # Cost Tracker
 # =============================================================================
+
 
 class CostTracker:
     """Collects LLMResponse metadata from each call site and computes costs."""
@@ -112,17 +107,19 @@ class CostTracker:
     def record(self, resp: LLMResponse, call_id: str, step: str) -> None:
         """Record token usage from an LLMResponse."""
         cost = estimate_cost(resp.model, resp.input_tokens, resp.output_tokens)
-        self.records.append(LLMCallRecord(
-            call_id=call_id,
-            step=step,
-            model=resp.model,
-            provider=resp.provider.value,
-            input_tokens=resp.input_tokens,
-            output_tokens=resp.output_tokens,
-            total_tokens=resp.input_tokens + resp.output_tokens,
-            cost_usd=cost,
-            timestamp=datetime.now(timezone.utc).isoformat(),
-        ))
+        self.records.append(
+            LLMCallRecord(
+                call_id=call_id,
+                step=step,
+                model=resp.model,
+                provider=resp.provider.value,
+                input_tokens=resp.input_tokens,
+                output_tokens=resp.output_tokens,
+                total_tokens=resp.input_tokens + resp.output_tokens,
+                cost_usd=cost,
+                timestamp=datetime.now(UTC).isoformat(),
+            )
+        )
 
     def summarize(self) -> CostSummary:
         """Aggregate all records into a CostSummary."""
@@ -141,6 +138,7 @@ class CostTracker:
 # =============================================================================
 # Class 1: CritiqueAtomizer
 # =============================================================================
+
 
 class CritiqueAtomizer:
     """Extracts and grades critiques from reviewer feedback in a single LLM call."""
@@ -171,7 +169,9 @@ class CritiqueAtomizer:
         )
 
         resp = await self.llm.generate(
-            prompt, max_tokens=8000, temperature=0.2,
+            prompt,
+            max_tokens=8000,
+            temperature=0.2,
         )
         if tracker:
             tracker.record(resp, call_id="atomize", step="atomize")
@@ -220,11 +220,9 @@ class CritiqueAtomizer:
                     reviewer_parts.append(f"[{label}] Suggestions: {'; '.join(cs.suggestions)}")
 
             if review.major_revisions:
-                reviewer_parts.append(
-                    f"Major revisions: {'; '.join(review.major_revisions)}")
+                reviewer_parts.append(f"Major revisions: {'; '.join(review.major_revisions)}")
             if review.minor_revisions:
-                reviewer_parts.append(
-                    f"Minor revisions: {'; '.join(review.minor_revisions)}")
+                reviewer_parts.append(f"Minor revisions: {'; '.join(review.minor_revisions)}")
 
             parts.append("\n".join(reviewer_parts))
 
@@ -244,7 +242,7 @@ class CritiqueAtomizer:
 
     def _parse_suggestions(self, text: str) -> list[SuggestionRecord]:
         """Parse LLM output into SuggestionRecord list with fallback on bad grades."""
-        json_str = _extract_json_from_text(text)
+        json_str = extract_json(text)
         try:
             data = json.loads(json_str)
         except json.JSONDecodeError:
@@ -266,27 +264,22 @@ class CritiqueAtomizer:
                     issue=item.get("issue", ""),
                     recommended_fix=item.get("recommended_fix", ""),
                     criterion_tags=[
-                        t for t in item.get("criterion_tags", [])
-                        if t in _VALID_CRITERIA
+                        t for t in item.get("criterion_tags", []) if t in _VALID_CRITERIA
                     ],
                     target_sections=[
-                        s for s in item.get("target_sections", [])
-                        if s in _VALID_SECTIONS
+                        s for s in item.get("target_sections", []) if s in _VALID_SECTIONS
                     ],
-                    severity=_parse_enum(
-                        item.get("severity", "S1"), Severity, Severity.S1),
+                    severity=_parse_enum(item.get("severity", "S1"), Severity, Severity.S1),
                     evidence_status=_parse_enum(
-                        item.get("evidence_status", "E1"), EvidenceStatus, EvidenceStatus.E1),
-                    confidence=_parse_enum(
-                        item.get("confidence", "C1"), Confidence, Confidence.C1),
-                    effort=_parse_enum(
-                        item.get("effort", "F1"), Effort, Effort.F1),
-                    impact=_parse_enum(
-                        item.get("impact", "I1"), Impact, Impact.I1),
-                    dependency=_parse_enum(
-                        item.get("dependency", "D0"), Dependency, Dependency.D0),
+                        item.get("evidence_status", "E1"), EvidenceStatus, EvidenceStatus.E1
+                    ),
+                    confidence=_parse_enum(item.get("confidence", "C1"), Confidence, Confidence.C1),
+                    effort=_parse_enum(item.get("effort", "F1"), Effort, Effort.F1),
+                    impact=_parse_enum(item.get("impact", "I1"), Impact, Impact.I1),
+                    dependency=_parse_enum(item.get("dependency", "D0"), Dependency, Dependency.D0),
                     actionability=_parse_enum(
-                        item.get("actionability", "A1"), Actionability, Actionability.A1),
+                        item.get("actionability", "A1"), Actionability, Actionability.A1
+                    ),
                     acceptance_test=item.get("acceptance_test", ""),
                     depends_on=item.get("depends_on", []),
                     blocks=item.get("blocks", []),
@@ -326,6 +319,7 @@ class CritiqueAtomizer:
 # Class 2: ConsistencyChecker
 # =============================================================================
 
+
 class ConsistencyChecker:
     """Runs structural and LLM-based consistency checks on a revised proposal."""
 
@@ -351,8 +345,10 @@ class ConsistencyChecker:
 
         # LLM-based checks (batched into 1 call)
         llm_checks = [
-            c for c in enabled_checks
-            if c in (
+            c
+            for c in enabled_checks
+            if c
+            in (
                 "country_set_consistent",
                 "hypotheses_traceability",
                 "ethics_human_subjects_consistency",
@@ -402,8 +398,16 @@ class ConsistencyChecker:
     def _check_timeline_ethics(proposal: Proposal) -> ConsistencyCheck:
         """Verify ethics section mentions timing if tasks involve human subjects."""
         human_keywords = [
-            "human subject", "participant", "interview", "survey", "questionnaire",
-            "personal data", "gdpr", "clinical", "patient", "informed consent",
+            "human subject",
+            "participant",
+            "interview",
+            "survey",
+            "questionnaire",
+            "personal data",
+            "gdpr",
+            "clinical",
+            "patient",
+            "informed consent",
         ]
 
         tasks_mention_humans = False
@@ -429,18 +433,22 @@ class ConsistencyChecker:
             passed=mentions_timing,
             details=(
                 "Tasks involve human subjects. "
-                + ("Ethics section addresses timing." if mentions_timing
-                   else "Ethics section does NOT mention timing for ethics approval.")
+                + (
+                    "Ethics section addresses timing."
+                    if mentions_timing
+                    else "Ethics section does NOT mention timing for ethics approval."
+                )
             ),
         )
 
     async def _run_llm_checks(
-        self, proposal: Proposal, tracker: CostTracker | None = None,
+        self,
+        proposal: Proposal,
+        tracker: CostTracker | None = None,
     ) -> list[ConsistencyCheck]:
         """Run the 4 LLM-based consistency checks in a single batched call."""
         tasks_summary = "\n".join(
-            f"T{t.number}: {t.denomination} — {t.description[:300]}"
-            for t in proposal.tasks
+            f"T{t.number}: {t.denomination} — {t.description[:300]}" for t in proposal.tasks
         )
 
         prompt = load_prompt_template("review_iterate_consistency").format(
@@ -457,7 +465,7 @@ class ConsistencyChecker:
         if tracker:
             tracker.record(resp, call_id="consistency_llm", step="consistency")
 
-        json_str = _extract_json_from_text(resp.text)
+        json_str = extract_json(resp.text)
         try:
             data = json.loads(json_str)
         except json.JSONDecodeError:
@@ -471,11 +479,13 @@ class ConsistencyChecker:
         for item in data:
             if not isinstance(item, dict):
                 continue
-            results.append(ConsistencyCheck(
-                check_name=item.get("check_name", "unknown"),
-                passed=bool(item.get("passed", True)),
-                details=item.get("details", ""),
-            ))
+            results.append(
+                ConsistencyCheck(
+                    check_name=item.get("check_name", "unknown"),
+                    passed=bool(item.get("passed", True)),
+                    details=item.get("details", ""),
+                )
+            )
 
         return results
 
@@ -483,6 +493,7 @@ class ConsistencyChecker:
 # =============================================================================
 # Class 3: ReviewIterateEngine
 # =============================================================================
+
 
 class ReviewIterateEngine:
     """
@@ -513,8 +524,13 @@ class ReviewIterateEngine:
         version: int,
         draft: DraftIdea,
         output_dir: Path | None = None,
+        compliance_report=None,
     ) -> tuple[Proposal, ImprovementReport]:
         """Run the full 6-step review-iterate process.
+
+        Args:
+            compliance_report: Optional ComplianceReport — FAIL findings are
+                converted to SuggestionRecords and prepended (highest priority).
 
         Returns (revised_proposal, improvement_report).
         Total LLM calls: 4-8 per iteration.
@@ -526,14 +542,26 @@ class ReviewIterateEngine:
         # Steps 1-3: Atomize + Grade + Rank
         logger.info("  Step 1-3: Atomizing, grading, and ranking critiques...")
         all_suggestions = await self.atomizer.atomize_and_grade(
-            consensus, proposal, tracker=tracker,
+            consensus,
+            proposal,
+            tracker=tracker,
         )
+
+        # Prepend compliance findings as high-priority suggestions
+        if compliance_report is not None:
+            from src.compliance.formatters import compliance_to_suggestions
+
+            compliance_suggestions = compliance_to_suggestions(compliance_report)
+            if compliance_suggestions:
+                logger.info(
+                    f"  Prepending {len(compliance_suggestions)} compliance "
+                    f"suggestions (regulatory priority)"
+                )
+                all_suggestions = compliance_suggestions + all_suggestions
 
         # Filter out suggestions already addressed in prior iterations
         if self._prior_ids:
-            new_suggestions = [
-                s for s in all_suggestions if s.id not in self._prior_ids
-            ]
+            new_suggestions = [s for s in all_suggestions if s.id not in self._prior_ids]
             if len(new_suggestions) < len(all_suggestions):
                 logger.info(
                     f"  Filtered {len(all_suggestions) - len(new_suggestions)} "
@@ -556,10 +584,7 @@ class ReviewIterateEngine:
         to_apply = list(top)
         if cfg.review_iterate_include_trivial:
             # Also include F0 (trivial) fixes not already in top-N
-            trivial = [
-                s for s in ranked
-                if s.effort == Effort.F0 and s.id not in top_ids
-            ]
+            trivial = [s for s in ranked if s.effort == Effort.F0 and s.id not in top_ids]
             to_apply.extend(trivial)
 
         revised, actions = await self._apply_fixes(proposal, to_apply, ranked, tracker=tracker)
@@ -572,14 +597,22 @@ class ReviewIterateEngine:
         # Step 6: Consistency checks
         logger.info("  Step 6: Running consistency checks...")
         checks = await self.checker.run_checks(
-            revised, draft, cfg.review_iterate_consistency_checks,
+            revised,
+            draft,
+            cfg.review_iterate_consistency_checks,
             tracker=tracker,
         )
 
         # Step 5: Build improvement report
         logger.info("  Step 5: Building improvement report...")
         report = await self._build_report(
-            version, ranked, actions, checks, consensus, proposal, revised,
+            version,
+            ranked,
+            actions,
+            checks,
+            consensus,
+            proposal,
+            revised,
             tracker=tracker,
         )
 
@@ -625,16 +658,34 @@ class ReviewIterateEngine:
         # Apply fixes per section
         for section, sugs in section_suggestions.items():
             current_text = getattr(revised, section, "")
+            if not isinstance(current_text, str):
+                # Non-text fields (e.g. total_budget) cannot be revised
+                for sug in sugs:
+                    actions.append(
+                        SuggestionAction(
+                            suggestion_id=sug.id,
+                            action="deferred",
+                            edit_summary="Target field is not a text section.",
+                            section_modified=section,
+                            reason_if_not_adopted=(
+                                f"Field '{section}' is {type(current_text).__name__},"
+                                " not revisable text."
+                            ),
+                        )
+                    )
+                continue
             if not current_text:
                 # Record as deferred if section is empty
                 for sug in sugs:
-                    actions.append(SuggestionAction(
-                        suggestion_id=sug.id,
-                        action="deferred",
-                        edit_summary="Section is empty — cannot revise.",
-                        section_modified=section,
-                        reason_if_not_adopted="Target section has no content.",
-                    ))
+                    actions.append(
+                        SuggestionAction(
+                            suggestion_id=sug.id,
+                            action="deferred",
+                            edit_summary="Section is empty — cannot revise.",
+                            section_modified=section,
+                            reason_if_not_adopted="Target section has no content.",
+                        )
+                    )
                 continue
 
             limit = _SECTION_LIMITS.get(section, 5000)
@@ -662,16 +713,15 @@ class ReviewIterateEngine:
             )
 
             resp = await self._llm.generate(
-                prompt, max_tokens=limit * 2,
+                prompt,
+                max_tokens=limit * 2,
                 temperature=cfg.revision.temperature,
             )
             if tracker:
                 tracker.record(resp, call_id=f"revise_{section}", step="revise")
             new_text = resp.text.strip()
 
-            if len(new_text) > limit:
-                new_text = safe_truncate(new_text, limit)
-            elif len(new_text) > target:
+            if len(new_text) > limit or len(new_text) > target:
                 new_text = safe_truncate(new_text, limit)
 
             setattr(revised, section, new_text)
@@ -680,29 +730,31 @@ class ReviewIterateEngine:
 
             # Record actions for each suggestion
             for sug in sugs:
-                actions.append(SuggestionAction(
-                    suggestion_id=sug.id,
-                    action="adopted",
-                    edit_summary=f"Section '{section}' revised to address: {sug.issue[:100]}",
-                    section_modified=section,
-                    before_text_snippet=before_snippet,
-                    after_text_snippet=after_snippet,
-                    acceptance_test_result="Pass",
-                ))
+                actions.append(
+                    SuggestionAction(
+                        suggestion_id=sug.id,
+                        action="adopted",
+                        edit_summary=f"Section '{section}' revised to address: {sug.issue[:100]}",
+                        section_modified=section,
+                        before_text_snippet=before_snippet,
+                        after_text_snippet=after_snippet,
+                        acceptance_test_result="Pass",
+                    )
+                )
 
         # Record not-applied suggestions
         applied_ids = {a.suggestion_id for a in actions}
         for sug in all_ranked:
             if sug.id not in applied_ids:
-                actions.append(SuggestionAction(
-                    suggestion_id=sug.id,
-                    action="deferred",
-                    edit_summary="Not in top-N and not trivial.",
-                    reason_if_not_adopted=(
-                        "Below priority threshold for this iteration."
-                    ),
-                    acceptance_test_result="Deferred",
-                ))
+                actions.append(
+                    SuggestionAction(
+                        suggestion_id=sug.id,
+                        action="deferred",
+                        edit_summary="Not in top-N and not trivial.",
+                        reason_if_not_adopted=("Below priority threshold for this iteration."),
+                        acceptance_test_result="Deferred",
+                    )
+                )
 
         return revised, actions
 
@@ -732,8 +784,7 @@ class ReviewIterateEngine:
         suggestions_summary = self._summarize_suggestions(all_suggestions)
         actions_summary = self._summarize_actions(actions)
         consistency_summary = "\n".join(
-            f"- {c.check_name}: {'PASS' if c.passed else 'FAIL'} — {c.details}"
-            for c in checks
+            f"- {c.check_name}: {'PASS' if c.passed else 'FAIL'} — {c.details}" for c in checks
         )
 
         prompt = load_prompt_template("review_iterate_narrative").format(
@@ -753,7 +804,7 @@ class ReviewIterateEngine:
 
         return ImprovementReport(
             version=version,
-            timestamp=datetime.now(timezone.utc).isoformat(),
+            timestamp=datetime.now(UTC).isoformat(),
             readiness_index=readiness,
             stoplight=stoplight,
             all_suggestions=all_suggestions,
@@ -793,7 +844,8 @@ class ReviewIterateEngine:
 
         # Bonus for actionable suggestions with recommended fixes
         a2_bonus = sum(
-            2 for sug in suggestions
+            2
+            for sug in suggestions
             if sug.actionability == Actionability.A2
             and sug.recommended_fix
             and action_map.get(sug.id) in ("adopted", "partially_adopted")
@@ -816,9 +868,7 @@ class ReviewIterateEngine:
             for sug in suggestions:
                 tags = sug.criterion_tags
                 # Match criterion or sub-criteria (A matches A1, A2)
-                if criterion in tags or any(
-                    t.startswith(criterion) for t in tags
-                ):
+                if criterion in tags or any(t.startswith(criterion) for t in tags):
                     if sug.severity == Severity.S3:
                         s3_count += 1
                     elif sug.severity == Severity.S2:
@@ -837,18 +887,18 @@ class ReviewIterateEngine:
             else:
                 color = "green"
                 rationale = (
-                    f"No fatal issues, {s2_count} major"
-                    if s2_count
-                    else "No significant issues"
+                    f"No fatal issues, {s2_count} major" if s2_count else "No significant issues"
                 )
 
-            entries.append(StoplightEntry(
-                criterion=criterion,
-                color=color,
-                s3_count=s3_count,
-                s2_count=s2_count,
-                rationale=rationale,
-            ))
+            entries.append(
+                StoplightEntry(
+                    criterion=criterion,
+                    color=color,
+                    s3_count=s3_count,
+                    s2_count=s2_count,
+                    rationale=rationale,
+                )
+            )
 
         return entries
 
@@ -860,9 +910,7 @@ class ReviewIterateEngine:
 
         severity_counts = {"S3": 0, "S2": 0, "S1": 0, "S0": 0}
         for sug in suggestions:
-            severity_counts[sug.severity.value] = (
-                severity_counts.get(sug.severity.value, 0) + 1
-            )
+            severity_counts[sug.severity.value] = severity_counts.get(sug.severity.value, 0) + 1
 
         lines = [
             f"Total suggestions: {len(suggestions)}",
@@ -874,9 +922,7 @@ class ReviewIterateEngine:
         ]
 
         for sug in suggestions[:10]:
-            lines.append(
-                f"[{sug.id}] {sug.severity.value}/{sug.impact.value} — {sug.issue[:120]}"
-            )
+            lines.append(f"[{sug.id}] {sug.severity.value}/{sug.impact.value} — {sug.issue[:120]}")
 
         return "\n".join(lines)
 
@@ -891,10 +937,13 @@ class ReviewIterateEngine:
         deferred = sum(1 for a in actions if a.action == "deferred")
         rejected = sum(1 for a in actions if a.action == "not_adopted")
 
-        sections_modified = list({
-            a.section_modified for a in actions
-            if a.action in ("adopted", "partially_adopted") and a.section_modified
-        })
+        sections_modified = list(
+            {
+                a.section_modified
+                for a in actions
+                if a.action in ("adopted", "partially_adopted") and a.section_modified
+            }
+        )
 
         lines = [
             f"Adopted: {adopted}, Partially adopted: {partial}, "
@@ -907,7 +956,7 @@ class ReviewIterateEngine:
     @staticmethod
     def _parse_narratives(text: str) -> dict[str, str]:
         """Parse the narrative JSON from the LLM response."""
-        json_str = _extract_json_from_text(text)
+        json_str = extract_json(text)
         try:
             data = json.loads(json_str)
             if isinstance(data, dict):
@@ -935,21 +984,24 @@ class ReviewIterateEngine:
         # Application markdown
         app_path = output_dir / f"application_v{version}.md"
         app_path.write_text(
-            proposal_to_application_md(revised), encoding="utf-8",
+            proposal_to_application_md(revised),
+            encoding="utf-8",
         )
         logger.info(f"  Saved: {app_path}")
 
         # Improvement report markdown
         report_path = output_dir / f"improvement_report_v{version}.md"
         report_path.write_text(
-            improvement_report_to_md(report, version), encoding="utf-8",
+            improvement_report_to_md(report, version),
+            encoding="utf-8",
         )
         logger.info(f"  Saved: {report_path}")
 
         # Improvement report JSON
         json_path = output_dir / f"improvement_report_v{version}.json"
         json_path.write_text(
-            report.model_dump_json(indent=2), encoding="utf-8",
+            report.model_dump_json(indent=2),
+            encoding="utf-8",
         )
         logger.info(f"  Saved: {json_path}")
 
@@ -957,12 +1009,14 @@ class ReviewIterateEngine:
         if report.cost_summary:
             cost_json_path = output_dir / f"llm_cost_report_v{version}.json"
             cost_json_path.write_text(
-                report.cost_summary.model_dump_json(indent=2), encoding="utf-8",
+                report.cost_summary.model_dump_json(indent=2),
+                encoding="utf-8",
             )
             logger.info(f"  Saved: {cost_json_path}")
 
             cost_md_path = output_dir / f"llm_cost_report_v{version}.md"
             cost_md_path.write_text(
-                cost_report_to_md(report.cost_summary, version), encoding="utf-8",
+                cost_report_to_md(report.cost_summary, version),
+                encoding="utf-8",
             )
             logger.info(f"  Saved: {cost_md_path}")
