@@ -13,8 +13,13 @@ import logging
 from src.config.fct_constants import CHAR_LIMITS
 from src.config.settings import ReviewerDef, cfg
 from src.generators.models import (
-    ConsensusReport, CriterionScore, DraftIdea, Proposal, ReviewReport,
+    ConsensusReport,
+    CriterionScore,
+    DraftIdea,
+    Proposal,
+    ReviewReport,
 )
+from src.utils.json_utils import extract_json
 from src.utils.llm_client import BaseLLMClient, get_llm_client, get_llm_for_role
 from src.utils.prompt_loader import get_prompt, load_prompt_template
 from src.utils.sanitize import scrub_identity_for_review
@@ -26,6 +31,7 @@ logger = logging.getLogger(__name__)
 # =============================================================================
 # Individual Reviewer
 # =============================================================================
+
 
 class AIReviewer:
     """One AI reviewer, configured from a ReviewerDef in config.yaml."""
@@ -39,8 +45,10 @@ class AIReviewer:
             self.llm = None
 
     async def review(
-        self, proposal: Proposal,
-        pi_name: str = "", team_names: list[str] | None = None,
+        self,
+        proposal: Proposal,
+        pi_name: str = "",
+        team_names: list[str] | None = None,
     ) -> ReviewReport | None:
         """Run a single AI reviewer against the proposal and return a structured report."""
         if not self.llm:
@@ -50,16 +58,21 @@ class AIReviewer:
         system = self._build_system()
 
         try:
-            resp = await self.llm.generate(prompt=prompt, system=system, max_tokens=6000, temperature=0.4)
+            resp = await self.llm.generate(
+                prompt=prompt,
+                system=system,
+                max_tokens=6000,
+                temperature=0.4,
+            )
             return self._parse(resp.text)
         except Exception as e:
             logger.error(f"Review failed ({self.defn.id}): {e}")
             return None
 
     def _build_system(self) -> str:
-        persona = self.defn.persona or get_prompt(
-            "system", "reviewer_fallback"
-        ).format(perspective=self.defn.perspective)
+        persona = self.defn.persona or get_prompt("system", "reviewer_fallback").format(
+            perspective=self.defn.perspective
+        )
         instructions = get_prompt("system", "reviewer_instructions")
         return f"{persona}\n\n{instructions}"
 
@@ -74,7 +87,8 @@ class AIReviewer:
         )
 
         # Anonymise identity-bearing fields for blind review
-        anon = lambda txt: scrub_identity_for_review(txt, pi_name, team_names)
+        def anon(txt: str) -> str:
+            return scrub_identity_for_review(txt, pi_name, team_names)
 
         return load_prompt_template("reviewer_evaluation").format(
             title=p.title_en,
@@ -82,48 +96,52 @@ class AIReviewer:
             duration=p.duration_months,
             budget=f"{p.total_budget:,.0f}",
             abstract=anon(p.abstract_en),
-            state_of_art=p.state_of_art_objectives,
-            research_plan=p.research_plan_methods,
+            state_of_art=anon(p.state_of_art_objectives),
+            research_plan=anon(p.research_plan_methods),
             tasks=tasks_txt,
             deliverables=deliverables_txt,
             management=anon(p.management_structure),
             career_profile=anon(p.career_profile[:2000]),
             team_cv=anon(p.team_cv_synopsis[:2000]),
-            ethics=p.ethics_justification,
+            ethics=anon(p.ethics_justification),
             focus_criteria=", ".join(self.defn.focus_criteria),
         )
 
     def _parse(self, text: str) -> ReviewReport:
-        clean = text.strip()
-        if clean.startswith("```"):
-            clean = clean.split("\n", 1)[-1]
-        if clean.endswith("```"):
-            clean = clean.rsplit("```", 1)[0]
-        clean = clean.strip()
+        clean = extract_json(text)
 
         try:
             data = json.loads(clean)
         except json.JSONDecodeError:
             logger.warning(f"JSON parse failed for {self.defn.id}; using raw text")
             return ReviewReport(
-                reviewer_id=self.defn.id, reviewer_model=self.defn.model,
-                reviewer_provider=self.defn.provider.value, perspective=self.defn.perspective,
-                overall_score=5.0, general_comments=text[:3000], decision="major_revision",
+                reviewer_id=self.defn.id,
+                reviewer_model=self.defn.model,
+                reviewer_provider=self.defn.provider.value,
+                perspective=self.defn.perspective,
+                overall_score=5.0,
+                general_comments=text[:3000],
+                decision="major_revision",
             )
 
         scores = [
             CriterionScore(
-                criterion=cs.get("criterion", ""), sub_criterion=cs.get("sub_criterion", ""),
-                score=float(cs.get("score") or 5.0), justification=cs.get("justification", ""),
-                strengths=cs.get("strengths", []), weaknesses=cs.get("weaknesses", []),
+                criterion=cs.get("criterion", ""),
+                sub_criterion=cs.get("sub_criterion", ""),
+                score=float(cs.get("score") or 5.0),
+                justification=cs.get("justification", ""),
+                strengths=cs.get("strengths", []),
+                weaknesses=cs.get("weaknesses", []),
                 suggestions=cs.get("suggestions", []),
             )
             for cs in data.get("criterion_scores", [])
         ]
 
         return ReviewReport(
-            reviewer_id=self.defn.id, reviewer_model=self.defn.model,
-            reviewer_provider=self.defn.provider.value, perspective=self.defn.perspective,
+            reviewer_id=self.defn.id,
+            reviewer_model=self.defn.model,
+            reviewer_provider=self.defn.provider.value,
+            perspective=self.defn.perspective,
             overall_score=float(data.get("overall_score") or 5.0),
             criterion_scores=scores,
             general_comments=data.get("general_comments", ""),
@@ -136,6 +154,7 @@ class AIReviewer:
 # =============================================================================
 # Panel Orchestrator
 # =============================================================================
+
 
 class ReviewPanel:
     """
@@ -150,7 +169,9 @@ class ReviewPanel:
         logger.info(f"Panel initialised: {[d.id for d in defs]}")
 
     async def review(
-        self, proposal: Proposal, draft: DraftIdea | None = None,
+        self,
+        proposal: Proposal,
+        draft: DraftIdea | None = None,
     ) -> ConsensusReport:
         logger.info(f"Running panel review ({len(self.reviewers)} reviewers)…")
 
@@ -169,7 +190,9 @@ class ReviewPanel:
         for i, res in enumerate(results):
             if isinstance(res, ReviewReport) and res is not None:
                 reviews.append(res)
-                logger.info(f"  {res.reviewer_id}: score={res.overall_score:.1f} decision={res.decision}")
+                logger.info(
+                    f"  {res.reviewer_id}: score={res.overall_score:.1f} decision={res.decision}"
+                )
             elif isinstance(res, Exception):
                 logger.warning(f"  Reviewer {i} failed: {res}")
 
@@ -210,7 +233,9 @@ class ReviewPanel:
             consensus_score=f"{score:.1f}",
         )
         narrative_resp = await self.consensus_llm.generate(
-            consensus_prompt, max_tokens=3000, temperature=0.3,
+            consensus_prompt,
+            max_tokens=3000,
+            temperature=0.3,
         )
 
         decisions = [r.decision for r in reviews]
@@ -238,6 +263,7 @@ class ReviewPanel:
 # =============================================================================
 # Revision Engine
 # =============================================================================
+
 
 class RevisionEngine:
     """Applies review feedback to improve proposal. Uses cfg.revision LLM."""
@@ -267,7 +293,8 @@ class RevisionEngine:
             )
             resp = await self.llm.generate(
                 revision_prompt,
-                max_tokens=limit * 2, temperature=cfg.revision.temperature,
+                max_tokens=limit * 2,
+                temperature=cfg.revision.temperature,
             )
             new = resp.text.strip()
             if len(new) > limit:
@@ -286,8 +313,18 @@ class RevisionEngine:
             for cs in r.criterion_scores:
                 if cs.score < 7.0:
                     if cs.sub_criterion in ("A1", "A2"):
-                        sections.append(("state_of_art_objectives", CHAR_LIMITS.state_of_art_objectives))
-                        sections.append(("research_plan_methods", CHAR_LIMITS.research_plan_methods))
+                        sections.append(
+                            (
+                                "state_of_art_objectives",
+                                CHAR_LIMITS.state_of_art_objectives,
+                            )
+                        )
+                        sections.append(
+                            (
+                                "research_plan_methods",
+                                CHAR_LIMITS.research_plan_methods,
+                            )
+                        )
                     elif cs.sub_criterion == "B1":
                         sections.append(("career_profile", CHAR_LIMITS.career_profile))
                     elif cs.sub_criterion == "B2":
@@ -300,8 +337,10 @@ class RevisionEngine:
         mapping = {
             "state_of_art_objectives": ["A1", "A2", "A"],
             "research_plan_methods": ["A1", "C"],
-            "career_profile": ["B1"], "contributions_new_ideas": ["B1"],
-            "team_cv_synopsis": ["B2"], "management_structure": ["C"],
+            "career_profile": ["B1"],
+            "contributions_new_ideas": ["B1"],
+            "team_cv_synopsis": ["B2"],
+            "management_structure": ["C"],
             "abstract_en": ["A1", "A2"],
         }
         relevant = mapping.get(section, [])

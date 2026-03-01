@@ -25,16 +25,16 @@ from pathlib import Path
 
 # Patterns that match common API key prefixes (at least 8 chars after prefix)
 _SECRET_PATTERNS = [
-    re.compile(r"sk-ant-[a-zA-Z0-9_-]{8,}"),       # Anthropic
-    re.compile(r"sk-proj-[a-zA-Z0-9_-]{8,}"),       # OpenAI project keys
-    re.compile(r"sk-[a-zA-Z0-9_-]{20,}"),           # OpenAI legacy keys
-    re.compile(r"AIzaSy[a-zA-Z0-9_-]{30,}"),        # Google API keys
-    re.compile(r"hf_[a-zA-Z0-9]{8,}"),              # Hugging Face
-    re.compile(r"ghp_[a-zA-Z0-9]{20,}"),            # GitHub PAT
-    re.compile(r"gho_[a-zA-Z0-9]{20,}"),            # GitHub OAuth
-    re.compile(r"xoxb-[a-zA-Z0-9-]{20,}"),          # Slack bot
-    re.compile(r"xoxp-[a-zA-Z0-9-]{20,}"),          # Slack user
-    re.compile(r"AKIA[0-9A-Z]{12,}"),               # AWS access key
+    re.compile(r"sk-ant-[a-zA-Z0-9_-]{8,}"),  # Anthropic
+    re.compile(r"sk-proj-[a-zA-Z0-9_-]{8,}"),  # OpenAI project keys
+    re.compile(r"sk-[a-zA-Z0-9_-]{20,}"),  # OpenAI legacy keys
+    re.compile(r"AIzaSy[a-zA-Z0-9_-]{30,}"),  # Google API keys
+    re.compile(r"hf_[a-zA-Z0-9]{8,}"),  # Hugging Face
+    re.compile(r"ghp_[a-zA-Z0-9]{20,}"),  # GitHub PAT
+    re.compile(r"gho_[a-zA-Z0-9]{20,}"),  # GitHub OAuth
+    re.compile(r"xoxb-[a-zA-Z0-9-]{20,}"),  # Slack bot
+    re.compile(r"xoxp-[a-zA-Z0-9-]{20,}"),  # Slack user
+    re.compile(r"AKIA[0-9A-Z]{12,}"),  # AWS access key
 ]
 
 
@@ -55,8 +55,8 @@ def redact_secrets(text: str) -> str:
 # =============================================================================
 
 _EMAIL_RE = re.compile(r"[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+")
-# Portuguese phone: +351 followed by 9 digits (with optional spaces/dots/dashes)
-_PT_PHONE_RE = re.compile(r"\+351[\s.\-]?\d{3}[\s.\-]?\d{3}[\s.\-]?\d{3}")
+# International phone: + followed by country code and 7-12 digits (optional separators)
+_INTL_PHONE_RE = re.compile(r"\+\d{1,3}[\s.\-]?\d{2,4}[\s.\-]?\d{3,4}[\s.\-]?\d{3,4}")
 # Portuguese NIF (tax ID): 9 digits, optionally prefixed with NIF/nif/Nif or "contribuinte"
 _NIF_RE = re.compile(r"(?:NIF|nif|Nif|contribuinte)\s*[:.]?\s*\d{9}")
 # Portuguese CC (citizen card) / BI (identity card): 8+ digit sequences after CC/BI
@@ -66,13 +66,13 @@ _CC_BI_RE = re.compile(r"(?:CC|BI)\s*[:.]?\s*\d{8,}")
 def scrub_pii_for_llm(text: str) -> str:
     """Remove contact PII that LLMs don't need to generate good proposals.
 
-    Removes: email addresses, Portuguese phone numbers, NIF/CC patterns.
+    Removes: email addresses, international phone numbers, NIF/CC patterns.
     Preserves: names, ORCID, institutions (needed for proposal content).
     """
     if not text:
         return text if text == "" else ""
     text = _EMAIL_RE.sub("[email removed]", text)
-    text = _PT_PHONE_RE.sub("[phone removed]", text)
+    text = _INTL_PHONE_RE.sub("[phone removed]", text)
     text = _NIF_RE.sub("[tax ID removed]", text)
     text = _CC_BI_RE.sub("[ID removed]", text)
     return text
@@ -81,6 +81,7 @@ def scrub_pii_for_llm(text: str) -> str:
 # =============================================================================
 # PII scrubbing — Level 2: identity anonymisation (for reviewer LLM)
 # =============================================================================
+
 
 def scrub_identity_for_review(
     text: str,
@@ -115,6 +116,7 @@ def scrub_identity_for_review(
 # Path sanitisation
 # =============================================================================
 
+
 def validate_path(user_path: str, allowed_root: Path) -> Path:
     """
     Resolve *user_path* and ensure it stays under *allowed_root*.
@@ -123,7 +125,5 @@ def validate_path(user_path: str, allowed_root: Path) -> Path:
     resolved = Path(user_path).resolve()
     root = allowed_root.resolve()
     if not (resolved == root or str(resolved).startswith(str(root) + "/")):
-        raise ValueError(
-            f"Path '{user_path}' resolves outside the allowed directory '{root}'"
-        )
+        raise ValueError(f"Path '{user_path}' resolves outside the allowed directory '{root}'")
     return resolved

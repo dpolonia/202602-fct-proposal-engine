@@ -11,10 +11,10 @@ from src.utils.sanitize import (
     validate_path,
 )
 
-
 # =============================================================================
 # redact_secrets
 # =============================================================================
+
 
 def _fake(prefix: str, length: int = 20) -> str:
     """Build a fake token dynamically so literal patterns don't trigger scanners."""
@@ -104,6 +104,7 @@ class TestRedactSecrets:
 # scrub_pii_for_llm
 # =============================================================================
 
+
 class TestScrubPiiForLlm:
     """Tests for scrub_pii_for_llm"""
 
@@ -128,6 +129,24 @@ class TestScrubPiiForLlm:
         text = "Phone: +351912345678"
         result = scrub_pii_for_llm(text)
         assert "912345678" not in result
+
+    def test_removes_international_phone_uk(self):
+        text = "Call +44 20 7946 0958 for details"
+        result = scrub_pii_for_llm(text)
+        assert "7946" not in result
+        assert "[phone removed]" in result
+
+    def test_removes_international_phone_germany(self):
+        text = "Phone: +49 30 1234 5678"
+        result = scrub_pii_for_llm(text)
+        assert "1234" not in result
+        assert "[phone removed]" in result
+
+    def test_removes_international_phone_us(self):
+        text = "Contact +1 555 123 4567"
+        result = scrub_pii_for_llm(text)
+        assert "555" not in result
+        assert "[phone removed]" in result
 
     def test_removes_nif(self):
         text = "NIF: 123456789"
@@ -176,6 +195,7 @@ class TestScrubPiiForLlm:
 # =============================================================================
 # scrub_identity_for_review
 # =============================================================================
+
 
 class TestScrubIdentityForReview:
     """Tests for scrub_identity_for_review"""
@@ -237,6 +257,7 @@ class TestScrubIdentityForReview:
 # validate_path
 # =============================================================================
 
+
 class TestValidatePath:
     """Tests for validate_path"""
 
@@ -268,35 +289,34 @@ class TestValidatePath:
 # API key authentication (structural checks)
 # =============================================================================
 
+
 class TestApiKeyAuth:
     """Tests for API key authentication"""
 
     def test_timing_safe_comparison_used(self):
         """Verify hmac.compare_digest is used, not plain =="""
-        source = open("src/api/app.py").read()
-        assert "hmac.compare_digest" in source, \
-            "API key comparison must use hmac.compare_digest"
-        assert "import hmac" in source, \
-            "hmac must be imported"
+        with open("src/api/app.py") as f:
+            source = f.read()
+        assert "hmac.compare_digest" in source, "API key comparison must use hmac.compare_digest"
+        assert "import hmac" in source, "hmac must be imported"
 
     def test_no_plain_equality_for_api_key(self):
         """Ensure no plain == or != comparison for API keys"""
-        source = open("src/api/app.py").read()
+        with open("src/api/app.py") as f:
+            source = f.read()
         # Find the verify_api_key function body
         start = source.index("async def verify_api_key")
-        end = source.index("\n\napp = FastAPI")
+        end = source.index("\n\n# --- Security headers")
         fn_body = source[start:end]
-        assert "!= configured_key" not in fn_body, \
-            "Must not use != for API key comparison"
-        assert "== configured_key" not in fn_body, \
-            "Must not use == for API key comparison"
+        assert "!= configured_key" not in fn_body, "Must not use != for API key comparison"
+        assert "== configured_key" not in fn_body, "Must not use == for API key comparison"
 
     def test_health_endpoint_no_auth(self):
         """Health endpoint should not require authentication"""
-        source = open("src/api/app.py").read()
+        with open("src/api/app.py") as f:
+            source = f.read()
         # /health should NOT have Depends(verify_api_key)
         health_start = source.index('@app.get("/health")')
         health_end = source.index("async def health")
         health_decorator = source[health_start:health_end]
-        assert "verify_api_key" not in health_decorator, \
-            "/health endpoint must not require API key"
+        assert "verify_api_key" not in health_decorator, "/health endpoint must not require API key"
