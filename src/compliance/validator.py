@@ -46,8 +46,8 @@ class ComplianceValidator:
         Returns:
             ComplianceReport with all findings and aggregates.
         """
-        disabled_rules = set(disabled_rules or [])
-        disabled_categories = set(disabled_categories or [])
+        _disabled_rules: set[str] = set(disabled_rules or [])
+        _disabled_categories: set[str] = set(disabled_categories or [])
 
         typology_val = (
             proposal.typology.value
@@ -60,12 +60,12 @@ class ComplianceValidator:
 
         logger.info(
             f"Compliance: validating v{version} against "
-            f"{len(all_rules)} rules ({len(disabled_rules)} disabled)"
+            f"{len(all_rules)} rules ({len(_disabled_rules)} disabled)"
         )
 
         for rule_id, rule_def in sorted(all_rules.items()):
             # Skip if disabled by rule ID
-            if rule_id in disabled_rules:
+            if rule_id in _disabled_rules:
                 findings.append(
                     ComplianceFinding(
                         rule_id=rule_id,
@@ -79,7 +79,7 @@ class ComplianceValidator:
                 continue
 
             # Skip if disabled by category
-            if rule_def.category.value in disabled_categories:
+            if rule_def.category.value in _disabled_categories:
                 findings.append(
                     ComplianceFinding(
                         rule_id=rule_id,

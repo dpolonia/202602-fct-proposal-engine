@@ -311,7 +311,8 @@ class HuggingFaceClient(BaseLLMClient):
 
 # --- Factory -------------------------------------------------------------------
 
-_CLIENTS = {
+_ClientType = type[AnthropicClient | OpenAIClient | GoogleClient | HuggingFaceClient]
+_CLIENTS: dict[LLMProvider, _ClientType] = {
     LLMProvider.ANTHROPIC: AnthropicClient,
     LLMProvider.OPENAI: OpenAIClient,
     LLMProvider.GOOGLE: GoogleClient,

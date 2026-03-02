@@ -44,7 +44,7 @@ def get_prompt(file: str, key: str) -> str:
     value = data
     for part in key.split("."):
         value = value[part]
-    return value.strip()
+    return str(value).strip()
 
 
 def load_prompt_template(name: str) -> str:

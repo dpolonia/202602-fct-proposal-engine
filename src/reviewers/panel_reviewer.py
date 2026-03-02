@@ -38,11 +38,11 @@ class AIReviewer:
 
     def __init__(self, definition: ReviewerDef):
         self.defn = definition
+        self.llm: BaseLLMClient | None = None
         try:
             self.llm = get_llm_client(provider=definition.provider, model=definition.model)
         except Exception as e:
             logger.warning(f"Skipping reviewer '{definition.id}': {e}")
-            self.llm = None
 
     async def review(
         self,

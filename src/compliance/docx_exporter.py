@@ -207,6 +207,9 @@ class ComplianceDocxExporter:
         delta = report.delta
         doc.add_heading("Changes from Previous Version", level=2)
 
+        if delta is None:
+            return
+
         items = [
             ("Resolved", delta.resolved),
             ("Persists", delta.persists),

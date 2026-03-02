@@ -9,6 +9,7 @@ import json
 import logging
 from datetime import datetime
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from src.config.settings import cfg
 from src.generators.docx_exporter import DocxExporter
@@ -17,6 +18,9 @@ from src.generators.models import ConsensusReport, DraftIdea, Proposal
 from src.generators.proposal_generator import ProposalGenerator
 from src.reviewers.panel_reviewer import ReviewPanel, RevisionEngine
 from src.utils.txt_formatter import char_report_to_txt, proposal_to_txt, review_to_txt
+
+if TYPE_CHECKING:
+    from src.reviewers.review_iterate import ReviewIterateEngine
 
 # Lazy imports for compliance (avoid circular / heavy import on startup)
 _compliance_loaded = False
@@ -30,12 +34,12 @@ class Pipeline:
         generator: ProposalGenerator | None = None,
         panel: ReviewPanel | None = None,
         reviser: RevisionEngine | None = None,
-        review_iterate_engine: object | None = None,
+        review_iterate_engine: ReviewIterateEngine | None = None,
     ):
         self.generator = generator or ProposalGenerator()
         self.panel = panel or ReviewPanel()
         self.reviser = reviser or RevisionEngine()
-        self.review_iterate = review_iterate_engine
+        self.review_iterate: ReviewIterateEngine | None = review_iterate_engine
 
     @staticmethod
     def _setup_output_dirs(base: Path) -> dict[str, Path]:
